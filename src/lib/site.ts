@@ -11,4 +11,11 @@ export const site = {
   // Legal name (and CPF/CNPJ, if desired) of the data controller, shown in the privacy policy.
   controller: process.env.NEXT_PUBLIC_CONTROLLER_NAME || "[NOME DO RESPONSÁVEL]",
   legalUpdatedAt: "26 de outubro de 2026",
+  // Signup bonus, built by bonus/build_carne_leao.py. The download link stays hidden until
+  // NEXT_PUBLIC_BONUS_READY=true (after the accountant review, see README).
+  bonus: {
+    ready: process.env.NEXT_PUBLIC_BONUS_READY === "true",
+    href: "/Carne-leao-2026-Ganho-Real.xlsx",
+    label: "Baixe a planilha grátis: Carnê-leão 2026 para quem recebe em dólar",
+  },
 };

@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { track } from "@/lib/analytics";
+import { site } from "@/lib/site";
 import { getUtm } from "@/lib/utm";
-import { CheckIcon } from "./icons";
+import { CheckIcon, DownloadIcon } from "./icons";
 
 type Props = {
   source: "hero" | "final";
@@ -46,14 +47,27 @@ export function WaitlistForm({ source, buttonLabel, successText, centered = fals
 
   if (status === "done") {
     return (
-      <div
-        role="status"
-        className="flex min-h-[52px] items-center gap-2.5 rounded-[10px] bg-brand-tint px-4 text-left text-[16px] font-bold text-brand"
-      >
-        <CheckIcon strokeWidth={2.4} className="shrink-0" />
-        {doubleOptIn
-          ? "Quase lá! Confirme sua inscrição no e-mail que acabamos de enviar."
-          : successText}
+      <div className={`flex flex-col gap-2.5 ${centered ? "items-center" : "items-start"}`}>
+        <div
+          role="status"
+          className="flex min-h-[52px] items-center gap-2.5 rounded-[10px] bg-brand-tint px-4 text-left text-[16px] font-bold text-brand"
+        >
+          <CheckIcon strokeWidth={2.4} className="shrink-0" />
+          {doubleOptIn
+            ? "Quase lá! Confirme sua inscrição no e-mail que acabamos de enviar."
+            : successText}
+        </div>
+        {site.bonus.ready && (
+          <a
+            href={site.bonus.href}
+            download
+            onClick={() => track("Bonus download", { source })}
+            className="flex min-h-12 items-center gap-2.5 rounded-[10px] border border-brand bg-white px-4 py-2.5 text-left text-[15px] font-bold text-brand no-underline"
+          >
+            <DownloadIcon strokeWidth={2.2} className="shrink-0" />
+            {site.bonus.label}
+          </a>
+        )}
       </div>
     );
   }

@@ -48,6 +48,16 @@ export function CheckIcon(props: IconProps) {
   );
 }
 
+export function DownloadIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3v12" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M5 21h14" />
+    </Svg>
+  );
+}
+
 export function GuideIcon(props: IconProps) {
   return (
     <Svg {...props}>
