@@ -18,6 +18,8 @@
   --color-gold: #f4c27a;
   --color-night-line: #2e3d37;
   --color-night-text: #c5d3cd;
+  /* Chart bars (admin). A brighter step of the brand green: #0b6b4f fails the chart chroma check. */
+  --color-chart: #0e8a63;
 }
 
 @theme inline {

@@ -75,6 +75,8 @@ All user tables have `user_id` and Row Level Security (`user_id = auth.uid()`).
 | `subscriptions` | `provider`, `provider_customer_id`, `provider_subscription_id`, `plan` (pro_monthly/pro_yearly/founding), `status`, `current_period_end` | Drives `profiles.plan` |
 | `payment_events` | `provider`, `event_id` (unique), `type`, `user_id?`, `amount`, `currency`, `raw` (jsonb), `received_at` | Every webhook, never edited |
 | `email_log` | `type`, `ref`, `sent_at` | Prevents duplicate reminders |
+| `team_members` | `user_id`, `role` (owner/finance/marketing) | Who can open the admin area |
+| `admin_audit_log` | `actor_id`, `action`, `target`, `data` (jsonb), `created_at` | Every admin action |
 
 ## 5. How the main features work
 
@@ -106,7 +108,26 @@ All user tables have `user_id` and Row Level Security (`user_id = auth.uid()`).
 - **Where limits are checked:** on the server, in actions and route handlers. The UI only hides buttons.
 - **Checkout:** the provider's hosted checkout (card + Pix), so no card data ever touches our servers.
 
-## 7. Privacy and LGPD
+## 7. Admin area (for the team)
+
+The waitlist dashboard already exists at `/admin` (password login, data from Brevo). With the app, it grows into a full admin area at `/admin`, using the same login as the app plus a role check.
+
+| Section | What it shows | Actions |
+|---|---|---|
+| Overview | Signups, users (total and active this week), Free vs. Pro, revenue this month, **founding sales vs. the 50-sale goal** | — |
+| Sales | Every stored payment event: paid, renewed, failed, refunded; totals by plan | Mark a refund as handled |
+| Users | Search by email: plan, signup date, last active, number of platforms | Grant or extend Pro (founding buyers); start an LGPD export or deletion |
+| Marketing | Signups and sales by channel, campaign and creator | Export a payout report (creators, marketer's R$ 10 per founding sale) |
+| System | Last PTAX update, daily/weekly job runs, emails sent and bounced | Re-run a failed job |
+
+- **Privacy:** the admin never shows a user's earnings, payments or time entries. The team doesn't need them, and the privacy promise stays true. Only counts and account details.
+- **Roles:**
+  - `owner` (Xinning): everything.
+  - `finance` (Gabriel): overview and sales.
+  - `marketing` (the marketer): overview and marketing.
+- **Action log:** every admin action is recorded (who, what, when).
+
+## 8. Privacy and LGPD
 
 - Row Level Security on every user table. The service key is used only in cron jobs and webhooks.
 - Database in São Paulo (`sa-east-1`). Daily backups on the paid plan.
@@ -114,7 +135,7 @@ All user tables have `user_id` and Row Level Security (`user_id = auth.uid()`).
 - **Delete account:** removes all of the user's rows. Payment records needed for taxes and accounting are anonymized, not kept with the user.
 - No analytics inside the app beyond counting key events (signup, first timer, first payment).
 
-## 8. Build plan
+## 9. Build plan
 
 | Week | Deliverable |
 |---|---|
@@ -124,11 +145,11 @@ All user tables have `user_id` and Row Level Security (`user_id = auth.uid()`).
 | 6 | Late-payment alerts (4); email setup; weekly summary |
 | 7 | Taxes: estimate, R$ 5 mil alert, DARF reminders (5) |
 | 8 | PDF + dispute message (6); checkout + webhooks for the founding sale |
-| 9 | Export/delete, QA on real phones, fixes; invite founding users |
+| 9 | Admin area (overview, sales, users, marketing, system, roles); export/delete; QA on real phones; invite founding users |
 
 Each week ends with a deploy you can click through, plus unit tests for every calculation.
 
-## 9. Running costs (to confirm when we choose)
+## 10. Running costs (to confirm when we choose)
 
 | Service | Free tier | When to pay |
 |---|---|---|
@@ -139,10 +160,11 @@ Each week ends with a deploy you can click through, plus unit tests for every ca
 
 These prices are from memory. I'll check the current numbers before you decide.
 
-## 10. Decisions needed from Xinning
+## 11. Decisions needed from Xinning
 
 1. **Approve this plan,** or tell me what to change.
 2. **App language at launch:** PT-BR only, or PT-BR + English? The site is already bilingual; the app can reuse the same setup. My recommendation: build with translations from day 1, ship in PT-BR, add English when you want.
 3. **Payment provider:** the comparison is coming next (item 3). Gabriel opens the account.
 4. **Email for the app:** Resend (handoff suggestion), or Brevo for everything to keep one account fewer. My recommendation: Resend for app emails, Brevo for the marketing list.
-5. **Paid plans at launch:** Vercel Pro and Supabase Pro, about US$ 45/month together.
+5. **Admin roles:** is it OK for Gabriel to see sales (finance role) and the marketer to see marketing numbers?
+6. **Paid plans at launch:** Vercel Pro and Supabase Pro, about US$ 45/month together.

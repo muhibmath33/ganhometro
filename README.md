@@ -33,6 +33,7 @@ Checks: `npm run lint` and `npm run build`.
 | `src/app/privacidade`, `src/app/termos`, `src/app/en/privacy`, `src/app/en/terms` | Privacy policy (LGPD) and terms, in Portuguese and English |
 | `src/app/opengraph-image.tsx` | Link preview image for WhatsApp, Instagram and others |
 | `bonus/` | Scripts that build and verify the carnê-leão spreadsheet, the PDF guide (`build_guide.py`), and the BCB rates (`ptax.json`) |
+| `src/app/admin`, `src/components/admin`, `src/lib/admin` | Private waitlist dashboard and CSV export |
 | `docs/stage1-proposal.md` | Stage 1 app plan (screens, data model, architecture), waiting for approval |
 | `docs/payment-providers.md` | Payment provider comparison and recommendation |
 | `docs/marketing/` | Workana job post and marketer brief (PT-BR) |
@@ -78,6 +79,21 @@ bought at registro.br with his CPF. The marketer gets access to accounts, never 
 5. Set `NEXT_PUBLIC_SITE_URL=https://ganhometro.com.br` and redeploy. `NEXT_PUBLIC_*` values are baked in at build time.
 
 CLI alternative: `npx vercel` (first deploy, links the project) and then `npx vercel --prod`.
+
+## Admin page (`/admin`)
+
+A private dashboard for the waitlist, in English:
+- total signups, last 7 days, today, and progress toward the 300–500 goal;
+- signups per day (last 30 days, São Paulo time);
+- breakdowns by channel (`utm_source`), campaign, language and form;
+- the latest signups with their consent date;
+- a **Download CSV** of the whole list.
+
+The data is read live from Brevo, so the page needs `BREVO_API_KEY` and `BREVO_LIST_ID`.
+
+**Turn it on:** set `ADMIN_PASSWORD` (12+ characters, not used anywhere else) in Vercel and redeploy, then open
+`https://ganhometro.com.br/admin`. You stay signed in for 7 days. Changing the password signs everyone out.
+The page is hidden from search engines and nothing links to it.
 
 ## Signup bonus: carnê-leão spreadsheet
 
