@@ -67,6 +67,7 @@ It prints an **API URL** and a **Publishable key**. Put them in `.env.local` as
 | `docs/stage1-proposal.md` | Stage 1 app plan (screens, data model, architecture), approved 27 Oct 2026 |
 | `docs/partnership-checklist.md` | What Xinning and Gabriel should agree in writing, plus questions for the accountant and lawyer |
 | `docs/success-and-competition.md` | Competitors in Brazil, odds of success, unit economics, risks and signals to watch |
+| `docs/freelancer-market.md` | Brazilian freelancers paid from abroad: what they want, competitors, where the gap is, and the proposal |
 | `docs/audience-expansion.md` | Which audiences to add after AI trainers, in what order, and how to test them |
 | `docs/market-sizing.md` | Target audience size: AI trainers in Brazil (estimates, sources, implications) |
 | `docs/payment-providers.md` | Payment provider comparison and recommendation |
