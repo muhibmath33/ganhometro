@@ -1,16 +1,16 @@
-# Stage 1 app: proposal for approval
+# Stage 1 app: plan
 
-**Status:** draft for Xinning's approval. Nothing is built yet.
+**Status:** approved by Xinning on 27 Oct 2026, with the general design from [audience-expansion.md](audience-expansion.md). Building starts now.
 **Scope:** features 1–6 from the handoff, plus login, Free/Pro plans, card + Pix checkout and the weekly summary email.
 **Timeline:** build weeks 3–9, founding users at weeks 10–12 (handoff Part D5).
 
 ## 1. What we're building
 
-A mobile-first web app where a Brazilian AI trainer can:
+A mobile-first web app where a Brazilian AI trainer can do the following. It's built general from day one, so freelancers and online tutors paid in dollars can be added later with copy and a few features, not a rebuild.
 
-1. **Add platforms:** name, advertised rate (US$/h) and payday.
-2. **Track time:** one tap starts a timer, marked as **paid task** or **unpaid** (guidelines, tests, waiting, rework).
-3. **Log payments:** dollars received, date, and which work period they cover.
+1. **Add income sources:** a *platform* (Mercor, Outlier, Upwork, Cambly…) or a *client*. For each one: the pay model (**hourly, per task/video, or fixed-price project**), the rate, the currency (USD, EUR, GBP or BRL), the platform commission if any, and when it pays.
+2. **Track time:** one tap starts a timer, marked as **paid** or **unpaid**. Unpaid categories are preset per type of work and editable: guidelines, tests, waiting and rework for AI trainers; proposals, calls and revisions for freelancers; waiting for students for tutors. Per-task work can also record how many tasks or videos were done.
+3. **Log payments:** amount and currency received, date, which work period (or project) they cover, and when they were expected.
 4. **See results:**
    - real hourly rate per platform and project, in reais;
    - unpaid share of their time;
@@ -29,7 +29,7 @@ A mobile-first web app where a Brazilian AI trainer can:
 | Screen | What's on it | Plan |
 |---|---|---|
 | Sign in | Email magic link and Google. No passwords. | — |
-| Onboarding | Add the first platform (name, rate, payday). About 1 minute. | — |
+| Onboarding | "What do you do?" (preselects categories), then add the first platform or client (name, pay model, rate, payday). About 1 minute. | — |
 | Today (home) | Big start/stop timer, paid/unpaid toggle with category chips, today's hours per platform | Free |
 | Dashboard | Per platform: real rate (R$/h and US$/h), gap vs. advertised, unpaid share, last 4 weeks | Free (2 platforms) / Pro |
 | Time log | List and edit entries, add a missed one manually | Free |
@@ -64,13 +64,14 @@ All user tables have `user_id` and Row Level Security (`user_id = auth.uid()`).
 
 | Table | Main columns | Notes |
 |---|---|---|
-| `profiles` | `id` (= auth user), `locale`, `timezone` (default America/Sao_Paulo), `plan` (free/pro), `pro_until` | Created on first sign-in |
-| `platforms` | `name`, `listed_rate_usd`, `pay_schedule` (weekly/biweekly/monthly), `pay_weekday` or `pay_day`, `grace_days` (default 2), `archived_at` | Free: up to 2 active |
-| `projects` | `platform_id`, `name`, `listed_rate_usd` (optional override), `archived_at` | Pro |
-| `time_entries` | `platform_id`, `project_id?`, `kind` (paid/unpaid), `unpaid_category` (guidelines/tests/waiting/rework/other), `started_at`, `ended_at` (null while running), `source` (timer/manual/extension) | One running entry per user (partial unique index). **No free-text field**, so nobody pastes task content. |
-| `payments` | `platform_id`, `received_on`, `amount_usd`, `period_start`, `period_end`, `method` (paypal/payoneer/wise/bank/other), `amount_brl_received?` | The period defaults to "since the last payment". BRL received is for Stage 2 (fee loss). |
+| `profiles` | `id` (= auth user), `locale`, `timezone` (default America/Sao_Paulo), `work_type` (ai/freelancer/teacher/creator/other), `plan` (free/pro), `pro_until` | Created on first sign-in |
+| `income_sources` | `kind` (platform/client), `name`, `pay_model` (hourly/per_task/fixed), `rate` (per hour or per task), `currency` (USD/EUR/GBP/BRL), `commission_pct?`, `pay_schedule` (weekly/biweekly/monthly/on_invoice), `pay_weekday` or `pay_day` or `payment_terms_days`, `grace_days` (default 2), `archived_at` | Free: up to 2 active |
+| `projects` | `source_id`, `name`, `pay_model?` and `rate?` (override), `fixed_price?` (for fixed-price projects), `archived_at` | Pro |
+| `categories` | `kind` (paid/unpaid), `name`, `preset` (guidelines, tests, waiting, rework, proposals, calls, revisions, admin…), `archived_at` | Presets by work type; users can rename or add |
+| `time_entries` | `source_id`, `project_id?`, `kind` (paid/unpaid), `category_id?`, `units?` (tasks/videos, for per-task pay), `started_at`, `ended_at` (null while running), `origin` (timer/manual/extension) | One running entry per user (partial unique index). **No free-text field**, so nobody pastes task content. |
+| `payments` | `source_id`, `project_id?`, `expected_on?`, `received_on`, `amount`, `currency`, `period_start`, `period_end`, `method` (paypal/payoneer/wise/airtm/bank/pix/other), `amount_brl_received?` | The period defaults to "since the last payment". Amounts in EUR/GBP convert to USD on the receipt date, then to BRL (carnê-leão rule). BRL received feeds the fee-loss tracker. |
 | `tax_deductions` | `month`, `inss_paid`, `dependents`, `alimony`, `other` | Same inputs as the spreadsheet |
-| `alerts` | `type` (late_payment/underpayment/tax_threshold/darf_due), `platform_id?`, `period`, `status` (open/dismissed/resolved), `data` (jsonb), `notified_at` | Shown in the app, some also emailed |
+| `alerts` | `type` (late_payment/underpayment/tax_threshold/darf_due), `source_id?`, `period`, `status` (open/dismissed/resolved), `data` (jsonb), `notified_at` | Shown in the app, some also emailed |
 | `ptax_rates` | `date` (PK), `buy`, `sell` | Shared, read-only for users |
 | `subscriptions` | `provider`, `provider_customer_id`, `provider_subscription_id`, `plan` (pro_monthly/pro_yearly/founding), `status`, `current_period_end` | Drives `profiles.plan` |
 | `payment_events` | `provider`, `event_id` (unique), `type`, `user_id?`, `amount`, `currency`, `raw` (jsonb), `received_at` | Every webhook, never edited |
@@ -160,11 +161,12 @@ Each week ends with a deploy you can click through, plus unit tests for every ca
 
 These prices are from memory. I'll check the current numbers before you decide.
 
-## 11. Decisions needed from Xinning
+## 11. Decisions (approved 27 Oct 2026)
 
-1. **Approve this plan,** or tell me what to change.
-2. **App language at launch:** PT-BR only, or PT-BR + English? The site is already bilingual; the app can reuse the same setup. My recommendation: build with translations from day 1, ship in PT-BR, add English when you want.
-3. **Payment provider:** the comparison is coming next (item 3). Gabriel opens the account.
-4. **Email for the app:** Resend (handoff suggestion), or Brevo for everything to keep one account fewer. My recommendation: Resend for app emails, Brevo for the marketing list.
-5. **Admin roles:** is it OK for Gabriel to see sales (finance role) and the marketer to see marketing numbers?
-6. **Paid plans at launch:** Vercel Pro and Supabase Pro, about US$ 45/month together.
+1. **Plan:** approved, with the general design (platforms or clients; hourly, per-task or fixed-price pay; any currency; editable categories).
+2. **Language:** built with translations from day 1 (same setup as the site), launching in PT-BR; English when wanted.
+3. **Payment provider:** Mercado Pago ([payment-providers.md](payment-providers.md)). Gabriel opens the account and adds Xinning as a collaborator. Needed by week 8.
+4. **Email:** Resend for app emails, Brevo for the marketing list.
+5. **Admin roles:** owner (Xinning), finance (Gabriel), marketing (the marketer).
+6. **Paid plans:** move to Vercel Pro and Supabase Pro at launch (about US$ 45/month). Develop on free tiers and on this computer until then.
+7. **Analytics:** Umami Cloud (free, cookieless) on the site.
