@@ -41,7 +41,7 @@ bought at registro.br with his CPF. The marketer gets access to accounts, never 
 
 ### 1. Brevo
 
-1. Create a list, for example "Lista de espera", and note its **ID** → `BREVO_LIST_ID`.
+1. Create a contact list named **"Waitlist"** and note its **ID** → `BREVO_LIST_ID`.
 2. Create an API key (SMTP & API → API keys) → `BREVO_API_KEY`.
 3. Contacts → Settings → Contact attributes: create these **Text** attributes:
    `SIGNUP_SOURCE`, `CONSENT_AT`, `UTM_SOURCE`, `UTM_MEDIUM`, `UTM_CAMPAIGN`, `UTM_CONTENT`, `UTM_TERM`.
@@ -98,7 +98,8 @@ Rules and rates live at the top of `build_carne_leao.py`, which makes a 2027 ver
 
 ## Before launch
 
-- [ ] Set `NEXT_PUBLIC_CONTACT_EMAIL` and `NEXT_PUBLIC_CONTROLLER_NAME`. Until then the page shows `[SEU E-MAIL]` and `[NOME DO RESPONSÁVEL]`.
+- [ ] Set up forwarding for `contato@ganhometro.com.br` (the default contact email), or set `NEXT_PUBLIC_CONTACT_EMAIL` to another address.
+- [ ] Set `NEXT_PUBLIC_CONTROLLER_NAME` (the data controller named in the privacy policy). Until then the page shows `[NOME DO RESPONSÁVEL]`.
 - [ ] Have a lawyer review `/privacidade` and `/termos`. They are a solid draft, not legal advice.
 - [ ] The FAQ says the carnê-leão estimate is "revisada por um contador antes do lançamento". Make sure that happens.
 - [ ] Submit a real signup on the live site and confirm it lands in the Brevo list with the attributes filled.
