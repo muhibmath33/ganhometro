@@ -16,6 +16,8 @@ export type RecentRow = {
   campaign: string;
   work: string;
   landing: string;
+  receiveAs: string;
+  income: string;
 };
 
 export type Stats = {
@@ -30,6 +32,8 @@ export type Stats = {
   byForm: Row[];
   byWork: Row[];
   byLanding: Row[];
+  byReceiveAs: Row[];
+  byIncome: Row[];
   recent: RecentRow[];
 };
 
@@ -39,6 +43,25 @@ const WORK_LABELS: Record<string, string> = {
   teacher: "Online teaching",
   creator: "Content creation",
   other: "Other",
+};
+
+// Where people signed up: the two landing pages and the free calculators. [full label, short label]
+const LANDING_LABELS: Record<string, [string, string]> = {
+  ai: ["Main page (AI trainers)", "Main"],
+  freelancers: ["/freelancers", "Freelancers"],
+  calc_take_home: ["Calculator: take-home pay", "Calc: take-home"],
+  calc_company: ["Calculator: individual or company", "Calc: PF/CNPJ"],
+  calc_carne_leao: ["Calculator: carnê-leão", "Calc: carnê-leão"],
+};
+
+// Optional signup questions (freelancer page and calculators).
+const RECEIVE_LABELS: Record<string, string> = { pf: "Individual (CPF)", cnpj: "Company (CNPJ)", unknown: "Doesn't know yet" };
+const INCOME_LABELS: Record<string, string> = {
+  upTo5k: "Up to R$ 5k",
+  from5to10k: "R$ 5–10k",
+  from10to20k: "R$ 10–20k",
+  over20k: "Over R$ 20k",
+  noAnswer: "Prefers not to say",
 };
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -80,10 +103,12 @@ export function computeStats(all: Contact[], listId: number, now: Date, days = 3
     byLanguage: breakdown(contacts, (c) => (text(c.attributes?.LANGUAGE) === "en" ? "English" : "Portuguese")),
     byForm: breakdown(contacts, (c) => {
       const form = text(c.attributes?.SIGNUP_SOURCE);
-      return form === "hero" ? "Top form" : form === "final" ? "Bottom form" : "Other";
+      return form === "hero" ? "Top form" : form === "final" ? "Bottom form" : form === "calc" ? "Calculator page" : "Other";
     }),
     byWork: breakdown(contacts, (c) => WORK_LABELS[text(c.attributes?.WORK_TYPE)] ?? "(didn't answer)"),
-    byLanding: breakdown(contacts, (c) => (text(c.attributes?.LANDING_PAGE) === "freelancers" ? "/freelancers" : "Main page (AI trainers)")),
+    byLanding: breakdown(contacts, (c) => (LANDING_LABELS[text(c.attributes?.LANDING_PAGE)] ?? LANDING_LABELS.ai)[0]),
+    byReceiveAs: breakdown(contacts, (c) => RECEIVE_LABELS[text(c.attributes?.RECEIVE_AS)] ?? "(didn't answer)"),
+    byIncome: breakdown(contacts, (c) => INCOME_LABELS[text(c.attributes?.INCOME_RANGE)] ?? "(didn't answer)"),
     recent: [...contacts]
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
       .slice(0, 25)
@@ -96,7 +121,9 @@ export function computeStats(all: Contact[], listId: number, now: Date, days = 3
         source: text(c.attributes?.UTM_SOURCE),
         campaign: text(c.attributes?.UTM_CAMPAIGN),
         work: WORK_LABELS[text(c.attributes?.WORK_TYPE)] ?? "",
-        landing: text(c.attributes?.LANDING_PAGE) === "freelancers" ? "Freelancers" : "Main",
+        landing: (LANDING_LABELS[text(c.attributes?.LANDING_PAGE)] ?? LANDING_LABELS.ai)[1],
+        receiveAs: RECEIVE_LABELS[text(c.attributes?.RECEIVE_AS)] ?? "",
+        income: INCOME_LABELS[text(c.attributes?.INCOME_RANGE)] ?? "",
       })),
   };
 }

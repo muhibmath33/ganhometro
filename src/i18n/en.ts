@@ -12,7 +12,7 @@ const en: Dictionary = {
   },
   nav: {
     label: "Main",
-    calculator: "Calculator",
+    calculator: "Calculators",
     how: "How it works",
     features: "Features",
     privacy: "Privacy",
@@ -180,6 +180,20 @@ const en: Dictionary = {
       creator: "Content creation (YouTube, TikTok…)",
       other: "Other",
     },
+    receiveLabel: "How are you paid? (optional)",
+    receiveOptions: {
+      pf: "As an individual (CPF)",
+      cnpj: "Through a company (MEI or CNPJ)",
+      unknown: "Not sure yet",
+    },
+    incomeLabel: "How much do you earn a month? (optional)",
+    incomeOptions: {
+      upTo5k: "Up to R$ 5k",
+      from5to10k: "R$ 5–10k",
+      from10to20k: "R$ 10–20k",
+      over20k: "Over R$ 20k",
+      noAnswer: "Prefer not to say",
+    },
     errors: {
       invalid_email: "Enter a valid email address.",
       consent_required: "Tick the consent box to join the waitlist.",
@@ -191,11 +205,12 @@ const en: Dictionary = {
       "© 2026 Ganhômetro. We are not affiliated with any platform or with the Receita Federal. Tax estimates are not a substitute for accounting advice.",
     privacy: "Privacy",
     terms: "Terms",
+    calculators: "Calculators",
     contact: "Contact: {email}",
   },
   legal: {
     updated: "Last updated: {date}",
-    date: "October 26, 2026",
+    date: "October 27, 2026",
   },
 };
 

@@ -169,7 +169,7 @@ function Breakdown({ title, note, rows }: { title: string; note?: string; rows: 
   );
 }
 
-const formLabel = (form: string) => (form === "hero" ? "Top" : form === "final" ? "Bottom" : "—");
+const formLabel = (form: string) => (form === "hero" ? "Top" : form === "final" ? "Bottom" : form === "calc" ? "Calculator" : "—");
 
 export function Dashboard({ stats }: { stats: Stats }) {
   const goal = Math.min(1, stats.active / SIGNUP_GOAL);
@@ -209,7 +209,9 @@ export function Dashboard({ stats }: { stats: Stats }) {
         <Breakdown title="By language" rows={stats.byLanguage} />
         <Breakdown title="By form" note="Top of the page or bottom" rows={stats.byForm} />
         <Breakdown title="What they do" note="Optional signup question: which audiences are signing up" rows={stats.byWork} />
-        <Breakdown title="By landing page" note="Main page vs. /freelancers test page" rows={stats.byLanding} />
+        <Breakdown title="By landing page" note="Main page, /freelancers test page or a free calculator" rows={stats.byLanding} />
+        <Breakdown title="How they're paid" note="Optional question on /freelancers and the calculators" rows={stats.byReceiveAs} />
+        <Breakdown title="Monthly income" note="Optional question on /freelancers and the calculators" rows={stats.byIncome} />
       </div>
 
       <section className="flex flex-col gap-3 rounded-2xl border border-line bg-white p-5">

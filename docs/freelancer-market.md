@@ -80,12 +80,12 @@ Ana is a UX designer. Two US clients pay her **US$ 3,000 a month** via Wise. Exc
 |---|---|---|
 | Gross in reais | R$ 16.500 | R$ 16.500 |
 | Exchange spread and fees (~1.5%) | − R$ 250 | − R$ 250 |
-| Income tax | − R$ 3.160 (carnê-leão; the INSS paid is deducted from the base) | − R$ 500 (DAS ~3% on export revenue) |
+| Income tax | − R$ 3.160 (carnê-leão; the INSS paid is deducted from the base) | − R$ 545 (DAS ~3,3% on export revenue, 2nd Simples band) |
 | INSS | − R$ 1.695 (20%, at the ceiling) | − R$ 510 (11% on a pro-labore of 28% = R$ 4.620; its IRRF is zero under the 2026 rules) |
 | Accountant | — | − R$ 250 |
-| **Left in reais** | **≈ R$ 11.390 (69%)** | **≈ R$ 14.990 (91%)** |
+| **Left in reais** | **≈ R$ 11.395 (69%)** | **≈ R$ 14.950 (91%)** |
 
-**The CNPJ leaves about R$ 3.600 more per month, roughly R$ 43.000 a year.** Even if Ana skipped INSS as PF (it's mandatory, but often skipped), the difference would still be about R$ 2.200–2.400 a month. One caveat for the accountant: INSS at 20% on the ceiling builds a larger pension than 11% on a pro-labore, so the comparison isn't only about tax.
+**The CNPJ leaves about R$ 3.550 more per month, roughly R$ 43.000 a year.** Even if Ana skipped INSS as PF (it's mandatory, but often skipped), the difference would still be about R$ 2.200–2.400 a month. One caveat for the accountant: INSS at 20% on the ceiling builds a larger pension than 11% on a pro-labore, so the comparison isn't only about tax.
 
 Most people paid from abroad don't know these numbers for their own case. Showing them every month, with their real figures, is the strongest hook we have.
 

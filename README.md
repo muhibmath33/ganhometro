@@ -3,7 +3,8 @@
 The waitlist site for Ganhômetro, in Brazilian Portuguese (`/`) and English (`/en`), with a PT/EN switch in the navbar.
 Next.js 16 (App Router) + Tailwind CSS 4, deployed on Vercel.
 Signups go to a Brevo list, and analytics use Umami Cloud (free, no cookies).
-There's also a second landing page for freelancers paid in dollars at `/freelancers` (and `/en/freelancers`), used to test that audience before launch.
+There's also a second landing page for freelancers paid in dollars at `/freelancers` (and `/en/freelancers`), built around "how much is really left in reais" ([docs/freelancer-market.md](docs/freelancer-market.md)).
+Free calculators live at `/calculadoras` (and `/en/calculators`): take-home pay, individual or company (PF ou CNPJ), and this month's carnê-leão.
 
 The app itself lives under `/app` and is being built week by week, following `docs/stage1-proposal.md`.
 It uses Supabase (Postgres + sign-in by emailed code). Done so far: sign-in, onboarding, platforms and clients (with the Free plan's limit of 2), settings,
@@ -21,6 +22,8 @@ Without Brevo keys, the form still works locally. The signup is printed in the t
 In production, a missing key makes the form show an error, so a misconfigured deploy can't silently lose signups.
 
 Checks: `npm run lint`, `npm test` (unit tests for the calculations, Node's built-in test runner) and `npm run build`.
+
+After changing a color in the `@theme` block of `src/app/globals.css`, restart `npm run dev`: the running dev server doesn't always pick it up.
 
 ### The app (`/app`) locally
 
@@ -47,6 +50,10 @@ It prints an **API URL** and a **Publishable key**. Put them in `.env.local` as
 | `src/app/page.tsx`, `src/app/en/page.tsx` | Portuguese (`/`) and English (`/en`) home pages |
 | `src/i18n/` | All page text: `pt.ts` (Portuguese, the original copy) and `en.ts` (English), plus the URL of each page per language |
 | `src/components/Calculator.tsx` | Real hourly rate calculator (client) |
+| `src/app/calculadoras`, `src/app/en/calculators` | Free calculator pages (take-home, PF ou CNPJ, carnê-leão) and their index |
+| `src/components/calculators/`, `src/i18n/calculators.ts` | The calculators and their text (PT/EN) |
+| `src/lib/money/tax.ts` | 2026 tax rules: carnê-leão, INSS, Simples Nacional on exports, PF vs. CNPJ, DARF due dates (with tests) |
+| `src/components/NetExampleCard.tsx`, `src/components/FeatureVotes.tsx` | `/freelancers` hero example and the "what do you want first?" vote |
 | `src/lib/calc.ts` | Calculator formulas and Brazilian number parsing, ported 1:1 from the design |
 | `src/components/WaitlistForm.tsx` | Email form with LGPD consent, honeypot, thank-you state |
 | `src/app/api/subscribe/route.ts` | Server route that adds the contact to Brevo |
@@ -65,6 +72,7 @@ It prints an **API URL** and a **Publishable key**. Put them in `.env.local` as
 | `supabase/migrations/` | Database tables, security rules (each user sees only their own rows), the Free plan limit, and no overlapping time entries |
 | `supabase/templates/magic_link.html` | The sign-in email (PT/EN), with the 6-digit code and a link |
 | `docs/stage1-proposal.md` | Stage 1 app plan (screens, data model, architecture), approved 27 Oct 2026 |
+| `docs/research/interview-script.md` | Interview script (EN, with a PT version for Gabriel) to check the freelancer research |
 | `docs/partnership-checklist.md` | What Xinning and Gabriel should agree in writing, plus questions for the accountant and lawyer |
 | `docs/success-and-competition.md` | Competitors in Brazil, odds of success, unit economics, risks and signals to watch |
 | `docs/freelancer-market.md` | Brazilian freelancers paid from abroad: what they want, competitors, where the gap is, and the proposal |
@@ -86,8 +94,9 @@ bought at registro.br with his CPF. The marketer gets access to accounts, never 
 1. Create a contact list named **"Waitlist"** and note its **ID** → `BREVO_LIST_ID`.
 2. Create an API key (SMTP & API → API keys) → `BREVO_API_KEY`.
 3. Contacts → Settings → Contact attributes: create these **Text** attributes:
-   `SIGNUP_SOURCE`, `CONSENT_AT`, `LANGUAGE`, `LANDING_PAGE`, `WORK_TYPE`, `UTM_SOURCE`, `UTM_MEDIUM`, `UTM_CAMPAIGN`, `UTM_CONTENT`, `UTM_TERM`.
+   `SIGNUP_SOURCE`, `CONSENT_AT`, `LANGUAGE`, `LANDING_PAGE`, `WORK_TYPE`, `RECEIVE_AS`, `INCOME_RANGE`, `UTM_SOURCE`, `UTM_MEDIUM`, `UTM_CAMPAIGN`, `UTM_CONTENT`, `UTM_TERM`.
    They hold the LGPD consent record and the campaign that brought each signup. `LANGUAGE` (`pt-BR` or `en`) lets you email people in their language.
+   `RECEIVE_AS` (`pf`, `cnpj` or `unknown`) and `INCOME_RANGE` are optional answers asked on `/freelancers` and the calculators.
    If they are missing, the route still saves the email, but without this data.
 4. Recommended: turn on double opt-in. Create a "double opt-in" template in Brevo, then set
    `BREVO_DOI_TEMPLATE_ID` and `BREVO_DOI_REDIRECT_URL` (for example `https://ganhometro.com.br/?confirmado=1`).
@@ -100,8 +109,9 @@ bought at registro.br with his CPF. The marketer gets access to accounts, never 
 1. Create a free account at **cloud.umami.is** (choose the EU region if asked) and add the website.
 2. Copy its **Website ID** into `NEXT_PUBLIC_UMAMI_WEBSITE_ID` and redeploy.
 3. The site sends these custom events:
-   - **`Signup`**, with `source` (top/bottom form), `locale`, `landing` (`ai` or `freelancers`) and `work` (the answer to "O que você faz?");
-   - **`Calculator used`**;
+   - **`Signup`**, with `source` (top/bottom form or `calc`), `locale`, `landing` (`ai`, `freelancers` or a calculator), `work` (the answer to "O que você faz?"), and on `/freelancers` and the calculators `receive` and `income`;
+   - **`Calculator used`**, with `calc` (`real_rate`, `take_home`, `company` or `carne_leao`);
+   - **`Feature vote`**, with `feature` (`income_report`, `salary`, `invoices` or `company_alert`): taps on "Quero isso" for features not built yet;
    - **`Bonus download`**, with `file` (spreadsheet or guide).
 4. UTM campaigns show up in Umami automatically.
 
@@ -142,7 +152,7 @@ Not needed for the waitlist. Xinning owns the account.
 A private dashboard for the waitlist, in English:
 - total signups, last 7 days, today, and progress toward the 300–500 goal;
 - signups per day (last 30 days, São Paulo time);
-- breakdowns by channel (`utm_source`), campaign, language and form;
+- breakdowns by channel (`utm_source`), campaign, language, form, landing page (including each calculator), what people do, how they're paid and income range;
 - the latest signups with their consent date;
 - a **Download CSV** of the whole list.
 
@@ -181,7 +191,7 @@ Rules and rates live at the top of `build_carne_leao.py`, which makes a 2027 ver
 - [ ] Set up forwarding for `contato@ganhometro.com.br` (the default contact email), or set `NEXT_PUBLIC_CONTACT_EMAIL` to another address.
 - [ ] Set `NEXT_PUBLIC_CONTROLLER_NAME` (the data controller named in the privacy policy). Until then the page shows `[NOME DO RESPONSÁVEL]`.
 - [ ] Have a lawyer review `/privacidade` and `/termos`. They are a solid draft, not legal advice.
-- [ ] The FAQ says the carnê-leão estimate is "revisada por um contador antes do lançamento". Make sure that happens.
+- [ ] The FAQ says the carnê-leão estimate is "revisada por um contador antes do lançamento". Make sure that happens, and that the review covers the calculators (`src/lib/money/tax.ts`): carnê-leão, INSS, Simples Nacional on export revenue, and the PF vs. CNPJ comparison.
 - [ ] Submit a real signup on the live site and confirm it lands in the Brevo list with the attributes filled.
 - [ ] Open the live URL with `?utm_source=teste&utm_campaign=teste`, sign up, and check the UTM attributes in Brevo.
 - [ ] Share the URL on WhatsApp and check the preview image.
@@ -193,7 +203,7 @@ Rules and rates live at the top of `build_carne_leao.py`, which makes a 2027 ver
 - Hero example card: Plataforma A shows **R$ 72,86/h** (the design had 72,88). Example numbers are now computed with the calculator's own logic, so they always match.
 - Stage 2 features (exchange and fee loss, income-drop alert) are marked **"Em breve"** in Recursos and in the Pro plan, like the Stage 3 ones.
 - `[PREÇO]` → **R$ 14,90**.
-- Nav order now follows the page order (Calculadora before Como funciona).
+- Nav order now follows the page order. "Calculadora" became **"Calculadoras"**, a link to the free calculators page; the real-rate calculator is still on the home page and listed there.
 - Footer links point to real `/privacidade` and `/termos` pages. "Termos" used to point to the FAQ.
 - Added: LGPD consent checkbox, error state, and a "Estimativa, não é orientação contábil" note in the carnê-leão section.
 - The hero headline scales down slightly on phones narrower than 400px, and the card grids no longer overflow at 320px. Desktop is unchanged.

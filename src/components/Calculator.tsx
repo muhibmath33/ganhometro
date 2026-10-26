@@ -22,7 +22,7 @@ export function Calculator({ t, locale }: { t: Dictionary["calculator"]; locale:
     setValues((v) => ({ ...v, [key]: value }));
     if (!tracked.current) {
       tracked.current = true;
-      track("Calculator used", { locale });
+      track("Calculator used", { calc: "real_rate", locale });
     }
   }
 

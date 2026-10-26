@@ -7,6 +7,10 @@ export const routes = {
   freelancers: { "pt-BR": "/freelancers", en: "/en/freelancers" },
   privacy: { "pt-BR": "/privacidade", en: "/en/privacy" },
   terms: { "pt-BR": "/termos", en: "/en/terms" },
+  calculators: { "pt-BR": "/calculadoras", en: "/en/calculators" },
+  calcTakeHome: { "pt-BR": "/calculadoras/quanto-sobra", en: "/en/calculators/take-home-pay" },
+  calcCompany: { "pt-BR": "/calculadoras/pf-ou-cnpj", en: "/en/calculators/individual-or-company" },
+  calcCarneLeao: { "pt-BR": "/calculadoras/carne-leao", en: "/en/calculators/carne-leao" },
 } as const;
 
 export type RouteKey = keyof typeof routes;

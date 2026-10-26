@@ -2,7 +2,6 @@ import { getDictionary, routes, type Locale, type RouteKey } from "@/i18n";
 import { LogoIcon } from "./icons";
 
 const sections = [
-  { id: "calculadora", key: "calculator" },
   { id: "como", key: "how" },
   { id: "recursos", key: "features" },
   { id: "privacidade", key: "privacy" },
@@ -37,6 +36,9 @@ export function SiteHeader({ locale, page }: { locale: Locale; page: RouteKey })
           aria-label={t.label}
           className="order-3 flex w-full flex-wrap items-center gap-1 lg:order-2 lg:ml-auto lg:w-auto"
         >
+          <a href={routes.calculators[locale]} className="px-3 py-2.5 text-[14px] font-medium text-ink-soft no-underline">
+            {t.calculator}
+          </a>
           {sections.map((s) => (
             <a
               key={s.id}

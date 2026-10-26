@@ -1,8 +1,15 @@
-import { type Audience, fill, getDictionary, type Locale } from "@/i18n";
+import Link from "next/link";
+import { type Audience, fill, getDictionary, type Locale, routes } from "@/i18n";
+import { getCalculatorsDictionary } from "@/i18n/calculators";
+import { getFreelancerExtras } from "@/i18n/freelancers";
 import { calculate, formatMoney } from "@/lib/calc";
+import { latestRates } from "@/lib/money/ptax";
 import { Calculator } from "./Calculator";
+import { TakeHomeCalculator } from "./calculators/TakeHomeCalculator";
 import { Faq } from "./Faq";
+import { FeatureVotes } from "./FeatureVotes";
 import { CardIcon, CheckIcon, ClockIcon, GuideIcon, ReworkIcon } from "./icons";
+import { NetExampleCard } from "./NetExampleCard";
 import { SiteFooter } from "./SiteFooter";
 import { SiteHeader } from "./SiteHeader";
 import { WaitlistForm } from "./WaitlistForm";
@@ -20,9 +27,12 @@ const autoGrid = {
   300: "grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(300px,100%),1fr))]",
 };
 
-// One layout for every audience; only the text changes (src/i18n/freelancers.ts).
-export function LandingPage({ locale, audience = "ai" }: { locale: Locale; audience?: Audience }) {
+// One layout for every audience; the text changes (src/i18n/freelancers.ts), and /freelancers swaps in
+// the take-home example, the take-home calculator and the feature vote.
+export async function LandingPage({ locale, audience = "ai" }: { locale: Locale; audience?: Audience }) {
   const t = getDictionary(locale, audience);
+  const freelancers = audience === "freelancers";
+  const extras = getFreelancerExtras(locale);
   const ex = t.example;
   const rate = t.calculator.defaultRate;
 
@@ -73,46 +83,51 @@ export function LandingPage({ locale, audience = "ai" }: { locale: Locale; audie
               t={t.form}
               buttonLabel={t.hero.button}
               successText={t.hero.success}
+              extraQuestions={freelancers}
             />
             <span className="text-[13px] text-muted">{t.hero.note}</span>
             <span className="text-[14px] text-ink-soft">{t.hero.freelancers}</span>
           </div>
 
-          <div className="flex min-w-0 flex-[1_1_380px] flex-col gap-4 rounded-[18px] border border-line bg-white p-[22px] shadow-[0_12px_32px_rgba(19,32,27,0.08)]">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[16px] font-extrabold">{ex.title}</span>
-              <span className="text-[12px] text-muted">{fill(ex.caption, { rate })}</span>
-            </div>
-            {examples.map((p) => (
-              <div key={p.name} className="flex flex-col gap-2.5 rounded-[14px] bg-paper p-4">
-                <div className="flex flex-wrap justify-between gap-2">
-                  <span className="text-[15px] font-bold">{p.name}</span>
-                  <span className="text-[13px] text-muted">{p.advertises}</span>
-                </div>
-                <div className="flex h-2.5 overflow-hidden rounded-full bg-line">
-                  <div className="bg-brand" style={{ width: `${p.paidPct}%` }} />
-                  <div className="bg-unpaid" style={{ width: `${100 - p.paidPct}%` }} />
-                </div>
-                <div className="flex flex-wrap justify-between gap-2 text-[13px] text-ink-soft">
-                  <span>{p.detail}</span>
-                  <span className="font-mono font-semibold text-ink">{p.realBrl}</span>
-                </div>
+          {freelancers ? (
+            <NetExampleCard t={extras.netExample} locale={locale} />
+          ) : (
+            <div className="flex min-w-0 flex-[1_1_380px] flex-col gap-4 rounded-[18px] border border-line bg-white p-[22px] shadow-[0_12px_32px_rgba(19,32,27,0.08)]">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-[16px] font-extrabold">{ex.title}</span>
+                <span className="text-[12px] text-muted">{fill(ex.caption, { rate })}</span>
               </div>
-            ))}
-            <div className="flex flex-wrap gap-3.5 text-[13px] text-ink-soft">
-              <span className="flex items-center gap-1.5">
-                <span className="size-2.5 rounded-[3px] bg-brand" />
-                {ex.legendPaid}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="size-2.5 rounded-[3px] bg-unpaid" />
-                {ex.legendUnpaid}
-              </span>
+              {examples.map((p) => (
+                <div key={p.name} className="flex flex-col gap-2.5 rounded-[14px] bg-paper p-4">
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <span className="text-[15px] font-bold">{p.name}</span>
+                    <span className="text-[13px] text-muted">{p.advertises}</span>
+                  </div>
+                  <div className="flex h-2.5 overflow-hidden rounded-full bg-line">
+                    <div className="bg-brand" style={{ width: `${p.paidPct}%` }} />
+                    <div className="bg-unpaid" style={{ width: `${100 - p.paidPct}%` }} />
+                  </div>
+                  <div className="flex flex-wrap justify-between gap-2 text-[13px] text-ink-soft">
+                    <span>{p.detail}</span>
+                    <span className="font-mono font-semibold text-ink">{p.realBrl}</span>
+                  </div>
+                </div>
+              ))}
+              <div className="flex flex-wrap gap-3.5 text-[13px] text-ink-soft">
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-[3px] bg-brand" />
+                  {ex.legendPaid}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-[3px] bg-unpaid" />
+                  {ex.legendUnpaid}
+                </span>
+              </div>
+              <div className="rounded-[10px] bg-ink px-3 py-2.5 text-[13px] leading-[1.45] font-semibold text-white">
+                {ex.verdict}
+              </div>
             </div>
-            <div className="rounded-[10px] bg-ink px-3 py-2.5 text-[13px] leading-[1.45] font-semibold text-white">
-              {ex.verdict}
-            </div>
-          </div>
+          )}
         </section>
 
         {/* Problem */}
@@ -144,7 +159,16 @@ export function LandingPage({ locale, audience = "ai" }: { locale: Locale; audie
             <h2 className={h2}>{t.calculator.title}</h2>
             <p className={lead}>{t.calculator.lead}</p>
           </div>
-          <Calculator t={t.calculator} locale={locale} />
+          {freelancers ? (
+            <>
+              <TakeHomeCalculator t={getCalculatorsDictionary(locale)} locale={locale} rates={await latestRates()} />
+              <Link href={routes.calculators[locale]} className="self-start text-[15px] font-semibold">
+                {extras.calculatorsLink} →
+              </Link>
+            </>
+          ) : (
+            <Calculator t={t.calculator} locale={locale} />
+          )}
         </section>
 
         {/* How it works */}
@@ -189,6 +213,19 @@ export function LandingPage({ locale, audience = "ai" }: { locale: Locale; audie
             ))}
           </div>
         </section>
+
+        {freelancers && (
+          <section id="votar" className="mx-auto flex max-w-[1120px] flex-col gap-6 px-6 pb-16">
+            <div className="flex max-w-[700px] flex-col gap-2.5">
+              <span className="self-start rounded-full bg-amber-tint px-3 py-1.5 text-[13px] font-bold text-amber-ink">
+                {extras.votes.badge}
+              </span>
+              <h2 className={h2}>{extras.votes.title}</h2>
+              <p className={lead}>{extras.votes.lead}</p>
+            </div>
+            <FeatureVotes t={extras.votes} locale={locale} />
+          </section>
+        )}
 
         {/* Carnê-leão bonus */}
         <section className="mx-auto max-w-[1120px] px-6 pb-16">
@@ -285,6 +322,7 @@ export function LandingPage({ locale, audience = "ai" }: { locale: Locale; audie
             t={t.form}
             buttonLabel={t.final.button}
             successText={t.final.success}
+            extraQuestions={freelancers}
             centered
           />
         </section>

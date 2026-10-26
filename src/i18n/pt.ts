@@ -11,7 +11,7 @@ const pt = {
   },
   nav: {
     label: "Principal",
-    calculator: "Calculadora",
+    calculator: "Calculadoras",
     how: "Como funciona",
     features: "Recursos",
     privacy: "Privacidade",
@@ -180,6 +180,20 @@ const pt = {
       creator: "Crio conteúdo (YouTube, TikTok…)",
       other: "Outro",
     },
+    receiveLabel: "Como você recebe? (opcional)",
+    receiveOptions: {
+      pf: "Como pessoa física (CPF)",
+      cnpj: "Com CNPJ (MEI ou empresa)",
+      unknown: "Ainda não sei",
+    },
+    incomeLabel: "Quanto recebe por mês? (opcional)",
+    incomeOptions: {
+      upTo5k: "Até R$ 5 mil",
+      from5to10k: "De R$ 5 a 10 mil",
+      from10to20k: "De R$ 10 a 20 mil",
+      over20k: "Mais de R$ 20 mil",
+      noAnswer: "Prefiro não dizer",
+    },
     errors: {
       invalid_email: "Digite um e-mail válido.",
       consent_required: "Marque a caixa de consentimento para entrar na lista.",
@@ -191,11 +205,12 @@ const pt = {
       "© 2026 Ganhômetro. Não somos ligados a nenhuma plataforma nem à Receita Federal. Estimativas de imposto não substituem orientação contábil.",
     privacy: "Privacidade",
     terms: "Termos",
+    calculators: "Calculadoras",
     contact: "Contato: {email}",
   },
   legal: {
     updated: "Última atualização: {date}",
-    date: "26 de outubro de 2026",
+    date: "27 de outubro de 2026",
   },
 };
 

@@ -10,9 +10,13 @@ import { getUtm } from "@/lib/utm";
 import { CheckIcon, DownloadIcon } from "./icons";
 
 type Props = {
-  source: "hero" | "final";
+  source: "hero" | "final" | "calc";
   locale: Locale;
   audience: Audience;
+  // Where the signup happened, when it isn't a landing page (e.g. "calc_company").
+  landing?: string;
+  // Also ask how they're paid (PF or CNPJ) and their monthly income range.
+  extraQuestions?: boolean;
   t: Dictionary["form"];
   buttonLabel: string;
   successText: string;
@@ -21,10 +25,64 @@ type Props = {
 
 type ErrorCode = keyof Dictionary["form"]["errors"];
 type WorkType = keyof Dictionary["form"]["workOptions"];
+type ReceiveAs = keyof Dictionary["form"]["receiveOptions"];
+type Income = keyof Dictionary["form"]["incomeOptions"];
 
-export function WaitlistForm({ source, locale, audience, t, buttonLabel, successText, centered = false }: Props) {
+// One optional question: a label and a select with a "choose" placeholder.
+function OptionalSelect<K extends string>({
+  id,
+  label,
+  placeholder,
+  options,
+  value,
+  onChange,
+  centered,
+}: {
+  id: string;
+  label: string;
+  placeholder: string;
+  options: Record<K, string>;
+  value: K | "";
+  onChange: (value: K | "") => void;
+  centered: boolean;
+}) {
+  return (
+    <div className={`flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-left ${centered ? "justify-center" : ""}`}>
+      <label htmlFor={id} className="text-[13px] font-semibold text-ink-soft">
+        {label}
+      </label>
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value as K | "")}
+        className="min-h-11 flex-[1_1_220px] cursor-pointer rounded-[10px] border border-field bg-white px-3 font-sans text-[15px] text-ink"
+      >
+        <option value="">{placeholder}</option>
+        {(Object.keys(options) as K[]).map((key) => (
+          <option key={key} value={key}>
+            {options[key]}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+export function WaitlistForm({
+  source,
+  locale,
+  audience,
+  landing = audience,
+  extraQuestions = false,
+  t,
+  buttonLabel,
+  successText,
+  centered = false,
+}: Props) {
   const [email, setEmail] = useState("");
   const [work, setWork] = useState<WorkType | "">(""); // optional: tells us which audiences sign up
+  const [receiveAs, setReceiveAs] = useState<ReceiveAs | "">("");
+  const [income, setIncome] = useState<Income | "">("");
   const [consent, setConsent] = useState(false);
   const [website, setWebsite] = useState(""); // honeypot
   const [status, setStatus] = useState<"idle" | "sending" | "done">("idle");
@@ -39,7 +97,7 @@ export function WaitlistForm({ source, locale, audience, t, buttonLabel, success
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, consent, source, locale, landing: audience, work, website, utm: getUtm() }),
+        body: JSON.stringify({ email, consent, source, locale, landing, work, receiveAs, income, website, utm: getUtm() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
@@ -49,7 +107,13 @@ export function WaitlistForm({ source, locale, audience, t, buttonLabel, success
       }
       setDoubleOptIn(Boolean(data.doubleOptIn));
       setStatus("done");
-      track("Signup", { source, locale, landing: audience, work: work || "none" });
+      track("Signup", {
+        source,
+        locale,
+        landing,
+        work: work || "none",
+        ...(extraQuestions ? { receive: receiveAs || "none", income: income || "none" } : {}),
+      });
     } catch {
       setStatus("idle");
       setError("generic");
@@ -117,25 +181,37 @@ export function WaitlistForm({ source, locale, audience, t, buttonLabel, success
           {status === "sending" ? t.sending : buttonLabel}
         </button>
       </div>
-      <div className={`flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-left ${centered ? "justify-center" : ""}`}>
-        <label htmlFor={`work-${source}`} className="text-[13px] font-semibold text-ink-soft">
-          {t.workLabel}
-        </label>
-        <select
-          id={`work-${source}`}
-          name="work"
-          value={work}
-          onChange={(e) => setWork(e.target.value as WorkType | "")}
-          className="min-h-11 flex-[1_1_220px] cursor-pointer rounded-[10px] border border-field bg-white px-3 font-sans text-[15px] text-ink"
-        >
-          <option value="">{t.workPlaceholder}</option>
-          {(Object.keys(t.workOptions) as WorkType[]).map((key) => (
-            <option key={key} value={key}>
-              {t.workOptions[key]}
-            </option>
-          ))}
-        </select>
-      </div>
+      <OptionalSelect
+        id={`work-${source}`}
+        label={t.workLabel}
+        placeholder={t.workPlaceholder}
+        options={t.workOptions}
+        value={work}
+        onChange={setWork}
+        centered={centered}
+      />
+      {extraQuestions && (
+        <>
+          <OptionalSelect
+            id={`receive-${source}`}
+            label={t.receiveLabel}
+            placeholder={t.workPlaceholder}
+            options={t.receiveOptions}
+            value={receiveAs}
+            onChange={setReceiveAs}
+            centered={centered}
+          />
+          <OptionalSelect
+            id={`income-${source}`}
+            label={t.incomeLabel}
+            placeholder={t.workPlaceholder}
+            options={t.incomeOptions}
+            value={income}
+            onChange={setIncome}
+            centered={centered}
+          />
+        </>
+      )}
       <label
         htmlFor={consentId}
         className="flex items-start gap-2 text-left text-[13px] leading-[1.5] text-muted"

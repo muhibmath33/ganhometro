@@ -42,6 +42,12 @@ export default function EnglishPrivacyPage() {
           in Ganhômetro.
         </li>
         <li>
+          <strong>How you&apos;re paid and income range</strong> (optional, on the freelancer page
+          and the calculators): if you answer, we store whether you&apos;re paid as an individual or
+          through a company and the monthly income range you picked (for example, &quot;R$ 5–10k&quot;),
+          so we know which features to build first. We never ask for the exact amount.
+        </li>
+        <li>
           <strong>Where your visit came from</strong>: the campaign parameters (UTM) of the link
           that brought you here, such as the name of the social network or ad. They are kept in
           your browser until you submit the form.
@@ -55,7 +61,10 @@ export default function EnglishPrivacyPage() {
           our hosting provider for security and to meet legal obligations.
         </li>
       </ul>
-      <p>The numbers you type into the calculator stay in your browser and are not sent to us.</p>
+      <p>
+        The numbers you type into the calculators stay in your browser and are not sent to us. We
+        only count, anonymously, that a calculator was used and which upcoming features got votes.
+      </p>
 
       <h2>3. Why we use your data</h2>
       <ul>

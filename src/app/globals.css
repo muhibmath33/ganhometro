@@ -20,6 +20,9 @@
   --color-night-text: #c5d3cd;
   /* Chart bars (admin). A brighter step of the brand green: #0b6b4f fails the chart chroma check. */
   --color-chart: #0e8a63;
+  /* Take-home bars (calculators): chart green kept, unpaid amber taxes, this burnt orange for fees and costs.
+     Validated together for color-blind separation; every segment is also labelled in text. */
+  --color-cost: #c05621;
 }
 
 @theme inline {

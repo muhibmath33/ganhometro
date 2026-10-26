@@ -9,6 +9,9 @@ export function SiteFooter({ locale }: { locale: Locale }) {
       <div className="mx-auto flex max-w-[1120px] flex-wrap justify-between gap-3 p-6 text-[13px] leading-[1.5] text-muted">
         <span>{t.copyright}</span>
         <div className="flex flex-wrap gap-4">
+          <Link href={routes.calculators[locale]} className="underline">
+            {t.calculators}
+          </Link>
           <Link href={routes.privacy[locale]} className="underline">
             {t.privacy}
           </Link>

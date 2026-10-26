@@ -5,10 +5,12 @@
 const BREVO_API = process.env.BREVO_API_URL || "https://api.brevo.com/v3"; // override only for local tests
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
-const SOURCES = ["hero", "final"];
+const SOURCES = ["hero", "final", "calc"];
 const LOCALES = ["pt-BR", "en"];
-const LANDINGS = ["ai", "freelancers"];
+const LANDINGS = ["ai", "freelancers", "calc_take_home", "calc_company", "calc_carne_leao"];
 const WORK_TYPES = ["ai", "freelancer", "teacher", "creator", "other"];
+const RECEIVE_AS = ["pf", "cnpj", "unknown"];
+const INCOME_RANGES = ["upTo5k", "from5to10k", "from10to20k", "over20k", "noAnswer"];
 
 type Body = {
   email?: unknown;
@@ -17,6 +19,8 @@ type Body = {
   locale?: unknown;
   landing?: unknown;
   work?: unknown;
+  receiveAs?: unknown;
+  income?: unknown;
   website?: unknown;
   utm?: unknown;
 };
@@ -51,6 +55,8 @@ export async function POST(request: Request) {
   const pick = (value: unknown, allowed: string[]) => (typeof value === "string" && allowed.includes(value) ? value : "");
   const landing = pick(body.landing, LANDINGS) || "ai";
   const work = pick(body.work, WORK_TYPES); // optional answer to "O que você faz?"
+  const receiveAs = pick(body.receiveAs, RECEIVE_AS); // optional: PF or CNPJ (freelancer page, calculators)
+  const income = pick(body.income, INCOME_RANGES); // optional: monthly income range
   const utm = body.utm && typeof body.utm === "object" ? (body.utm as Record<string, unknown>) : {};
 
   // LGPD: keep a record of when and where consent was given.
@@ -61,6 +67,8 @@ export async function POST(request: Request) {
     LANDING_PAGE: landing,
   };
   if (work) attributes.WORK_TYPE = work;
+  if (receiveAs) attributes.RECEIVE_AS = receiveAs;
+  if (income) attributes.INCOME_RANGE = income;
   for (const key of UTM_KEYS) {
     const value = utm[key];
     if (typeof value === "string" && value) attributes[key.toUpperCase()] = value.slice(0, 200);

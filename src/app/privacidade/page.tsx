@@ -41,6 +41,13 @@ export default function PrivacyPage() {
           quem se interessa pelo Ganhômetro.
         </li>
         <li>
+          <strong>Como você recebe e faixa de renda</strong> (opcionais, na página para
+          freelancers e nas calculadoras): se você responder, guardamos se recebe como pessoa
+          física ou com CNPJ e a faixa de renda mensal escolhida (por exemplo, &quot;de R$ 5 a
+          10 mil&quot;), para saber quais recursos construir primeiro. Nunca pedimos o valor
+          exato.
+        </li>
+        <li>
           <strong>Origem da visita</strong>: os parâmetros de campanha (UTM) do link que
           trouxe você até aqui, como o nome da rede social ou do anúncio. Eles ficam
           guardados no seu navegador até você enviar o formulário.
@@ -57,8 +64,9 @@ export default function PrivacyPage() {
         </li>
       </ul>
       <p>
-        Os números que você digita na calculadora ficam só no seu navegador e não são
-        enviados para nós.
+        Os números que você digita nas calculadoras ficam só no seu navegador e não são
+        enviados para nós. Contamos apenas, de forma anônima, que uma calculadora foi usada e
+        quais recursos em construção receberam votos.
       </p>
 
       <h2>3. Para que usamos seus dados</h2>
