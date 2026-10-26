@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { deleteEntry, type EntryFormState, saveEntry } from "@/app/app/actions";
+import { type EntryFormState, saveEntry } from "@/app/app/actions";
 import type { AppDictionary } from "@/i18n/app";
 import type { Category, EntryKind } from "@/lib/app/entries";
 import { fieldInput, fieldLabel } from "./SourceFields";
@@ -122,33 +122,6 @@ export function EntryForm({
 
       <FormMessage t={t} state={state} okText={t.entry.added} errors={t.entry.errors} />
       <SubmitButton pending={pending} label={values.id ? t.common.save : t.entry.add} pendingLabel={t.common.saving} />
-    </form>
-  );
-}
-
-// Two steps, so a stray tap doesn't delete an entry.
-export function DeleteEntryButton({ t, id }: { t: AppDictionary; id: string }) {
-  const [confirming, setConfirming] = useState(false);
-  const button = "min-h-11 cursor-pointer rounded-[10px] border px-4 font-sans text-[14px] font-semibold";
-  if (!confirming) {
-    return (
-      <button type="button" onClick={() => setConfirming(true)} className={`${button} self-start border-line bg-white text-amber-ink`}>
-        {t.entry.delete}
-      </button>
-    );
-  }
-  return (
-    <form action={deleteEntry} className="flex flex-wrap items-center gap-2">
-      <input type="hidden" name="id" value={id} />
-      <span role="alert" className="w-full text-[14px] font-semibold text-amber-ink">
-        {t.entry.confirmDelete}
-      </span>
-      <button type="submit" className={`${button} border-amber bg-amber text-white`}>
-        {t.entry.confirm}
-      </button>
-      <button type="button" onClick={() => setConfirming(false)} className={`${button} border-line bg-white text-ink`}>
-        {t.common.cancel}
-      </button>
     </form>
   );
 }

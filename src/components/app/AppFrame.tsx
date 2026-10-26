@@ -61,9 +61,9 @@ export async function AppFrame({ children }: { children: React.ReactNode }) {
             items={[
               { href: "/app", label: t.nav.today, icon: "today" },
               { href: "/app/painel", label: t.nav.dashboard, icon: "dashboard" },
+              { href: "/app/pagamentos", label: t.nav.payments, icon: "payments" },
               { href: "/app/registro", label: t.nav.log, icon: "log" },
-              { href: "/app/fontes", label: t.nav.sources, icon: "sources" },
-              { href: "/app/ajustes", label: t.nav.settings, icon: "settings" },
+              { href: "/app/ajustes", label: t.nav.settings, icon: "settings", also: ["/app/fontes"] },
             ]}
           />
         )}

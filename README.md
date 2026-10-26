@@ -8,7 +8,9 @@ Free calculators live at `/calculadoras` (and `/en/calculators`): take-home pay,
 
 The app itself lives under `/app` and is being built week by week, following `docs/stage1-proposal.md`.
 It uses Supabase (Postgres + sign-in by emailed code). Done so far: sign-in, onboarding, platforms and clients (with the Free plan's limit of 2), settings,
-the timer (paid/unpaid, categories), the time log with manual entries, and the dashboard with the real hourly rate.
+the timer (paid/unpaid, categories), the time log with manual entries, the dashboard with the real hourly rate,
+payments (quick add, or import a Wise, Payoneer or Upwork CSV statement), "possível diferença" on short payments,
+the month's take-home ("Quanto sobra") as an individual or a company, and the tax settings.
 
 ## Run locally
 
@@ -33,13 +35,16 @@ The app needs a local Supabase, which runs in Docker (install Docker Desktop fir
 npx supabase start    # first run downloads the images; applies supabase/migrations
 ```
 
-It prints an **API URL** and a **Publishable key**. Put them in `.env.local` as
-`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, then restart `npm run dev`.
+It prints an **API URL**, a **Publishable key** and a **Secret key**. Put them in `.env.local` as
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY` (the secret key lets the
+server store exchange rates), add any long random `CRON_SECRET`, then restart `npm run dev`.
 
 - Sign-in emails don't leave your computer. Open the local inbox at http://127.0.0.1:54324 to read the code.
 - `npx supabase db reset` wipes the local database and re-applies the migrations.
 - After changing a migration, regenerate the types:
   `npx supabase gen types typescript --local > src/lib/supabase/database.types.ts`.
+- Exchange rates fill in by themselves when a page needs them. To run the daily job by hand:
+  `curl -H "Authorization: Bearer <CRON_SECRET>" http://localhost:3000/api/cron/daily`.
 - `npx supabase stop` shuts it down. Changes to `supabase/config.toml` or the email template only apply after a stop and start.
 
 ## What's where
@@ -64,10 +69,13 @@ It prints an **API URL** and a **Publishable key**. Put them in `.env.local` as
 | `bonus/` | Scripts that build and verify the carnê-leão spreadsheet, the PDF guide (`build_guide.py`), and the BCB rates (`ptax.json`) |
 | `src/app/admin`, `src/components/admin`, `src/lib/admin` | Private waitlist dashboard and CSV export |
 | `src/app/app/` | The app: `page.tsx` (Today, with the timer), `painel` (dashboard), `registro` (time log), `fontes` (platforms and clients), `ajustes` (settings), `entrar` (sign in), `boas-vindas` (onboarding), `auth/confirm` (email link) |
+| `src/app/app/pagamentos/` | Payments: list and quick add, edit, and `importar` (statement import) |
 | `src/app/app/actions.ts` | Every form in the app (server actions) |
 | `src/components/app/`, `src/i18n/app.ts` | App screens' building blocks, and all app text (PT/EN) |
-| `src/lib/app/` | Signed-in user and profile (`session.ts`), platform/client and time entry form rules (`sources.ts`, `entries.ts`), time zones (`time.ts`) |
-| `src/lib/money/` | Real hourly rate (`realRate.ts`, with tests) and the Banco Central PTAX rate (`ptax.ts`) |
+| `src/lib/app/` | Signed-in user and profile (`session.ts`), form rules (`sources.ts`, `entries.ts`, `payments.ts`), time zones (`time.ts`), statement reader (`statementImport.ts`), payments in reais for pages (`money.ts`) |
+| `src/lib/money/` | Real rate (`realRate.ts`), money received, "possível diferença" and take-home (`received.ts`), conversion rules (`convert.ts`), taxes (`tax.ts`), Banco Central rates (`ptax.ts`, `rates.ts`); all with tests except the network parts |
+| `src/app/api/cron/daily`, `vercel.json` | Daily job (weekdays, 17:30 UTC) that stores the latest PTAX rates |
+| `src/lib/supabase/admin.ts` | Server-only client with the secret key, for the shared rates table |
 | `src/lib/supabase/`, `src/proxy.ts` | Supabase client, generated database types, session refresh for `/app` |
 | `supabase/migrations/` | Database tables, security rules (each user sees only their own rows), the Free plan limit, and no overlapping time entries |
 | `supabase/templates/magic_link.html` | The sign-in email (PT/EN), with the 6-digit code and a link |
@@ -144,8 +152,9 @@ Not needed for the waitlist. Xinning owns the account.
    2. In Supabase, **Authentication → Emails → SMTP Settings:** host `smtp.resend.com`, port `465`, user `resend`,
       password = a Resend API key, sender `nao-responda@ganhometro.com.br`, name `Ganhômetro`.
    3. **Authentication → Rate Limits:** raise "emails sent per hour" (for example to 100).
-6. Copy the **Project URL** and **Publishable key** (Project Settings → API) into Vercel as
-   `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, then redeploy.
+6. Copy the **Project URL**, **Publishable key** and **Secret key** (Project Settings → API) into Vercel as
+   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`. Add a long random
+   `CRON_SECRET` too: Vercel Cron sends it when it runs the daily job in `vercel.json`. Then redeploy.
 
 ## Admin page (`/admin`)
 
@@ -191,7 +200,7 @@ Rules and rates live at the top of `build_carne_leao.py`, which makes a 2027 ver
 - [ ] Set up forwarding for `contato@ganhometro.com.br` (the default contact email), or set `NEXT_PUBLIC_CONTACT_EMAIL` to another address.
 - [ ] Set `NEXT_PUBLIC_CONTROLLER_NAME` (the data controller named in the privacy policy). Until then the page shows `[NOME DO RESPONSÁVEL]`.
 - [ ] Have a lawyer review `/privacidade` and `/termos`. They are a solid draft, not legal advice.
-- [ ] The FAQ says the carnê-leão estimate is "revisada por um contador antes do lançamento". Make sure that happens, and that the review covers the calculators (`src/lib/money/tax.ts`): carnê-leão, INSS, Simples Nacional on export revenue, and the PF vs. CNPJ comparison.
+- [ ] The FAQ says the carnê-leão estimate is "revisada por um contador antes do lançamento". Make sure that happens, and that the review covers the calculators and the app's take-home (`src/lib/money/tax.ts`, `convert.ts`, `received.ts`): carnê-leão, INSS, Simples Nacional on export revenue, the PF vs. CNPJ comparison, tax on the amount before the platform's commission and fees, and euros/pounds converted to dollars at the day's parity first.
 - [ ] Submit a real signup on the live site and confirm it lands in the Brevo list with the attributes filled.
 - [ ] Open the live URL with `?utm_source=teste&utm_campaign=teste`, sign up, and check the UTM attributes in Brevo.
 - [ ] Share the URL on WhatsApp and check the preview image.

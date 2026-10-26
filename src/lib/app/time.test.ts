@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { addDays, dayKey, formatClock, formatDuration, startOfDay, timeKey, zonedToUtc } from "./time.ts";
+import { addDays, dayKey, formatClock, formatDuration, isDay, startOfDay, timeKey, zonedToUtc } from "./time.ts";
 
 const SP = "America/Sao_Paulo";
 
@@ -40,4 +40,10 @@ test("durations and the timer clock", () => {
   assert.equal(formatDuration(9_000_000, "en"), "2h 30m");
   assert.equal(formatDuration(3_900_000, "pt-BR"), "1h05");
   assert.equal(formatClock(5_025_000), "01:23:45");
+});
+
+test("isDay accepts only real dates", () => {
+  assert.equal(isDay("2026-10-27"), true);
+  assert.equal(isDay("2026-02-30"), false);
+  assert.equal(isDay("27/10/2026"), false);
 });

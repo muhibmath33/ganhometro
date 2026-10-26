@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { TakeHomeCard } from "@/components/app/TakeHomeCard";
 import { Card, PageSkeleton, SplitBar, SplitLegend } from "@/components/app/ui";
 import { categoryName, getAppDictionary } from "@/i18n/app";
 import { fill } from "@/i18n/config";
+import { monthSummary, taxProfile } from "@/lib/app/money";
 import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { currencySymbol } from "@/lib/app/sources";
 import { addDays, dayKey, formatDuration, startOfDay } from "@/lib/app/time";
 import { formatMoney } from "@/lib/calc";
 import { latestPtax } from "@/lib/money/ptax";
 import { entryHours, summarize } from "@/lib/money/realRate";
+import { checkUnderpayment, periodShare, receivedSummary } from "@/lib/money/received";
 
 const PERIODS = ["7", "28", "month"] as const;
 type Period = (typeof PERIODS)[number];
@@ -28,15 +31,29 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
   const fromDay = period === "month" ? `${today.slice(0, 8)}01` : addDays(today, -(Number(period) - 1));
   const from = startOfDay(fromDay, tz).getTime();
 
+  // Payments whose work period touches this period, and the month's take-home (always the calendar month).
+  const [{ data: paymentRows }, month] = await Promise.all([
+    supabase
+      .from("payments")
+      .select("source_id, amount, received_on, period_start, period_end")
+      .or(`period_end.gte.${fromDay},received_on.gte.${fromDay}`),
+    monthSummary(supabase, profile, Number(today.slice(0, 4)), Number(today.slice(5, 7))),
+  ]);
+  const payments = (paymentRows ?? []).map((p) => ({ ...p, amount: Number(p.amount) }));
+  // Hours from the earliest payment period too, so "possível diferença" sees all the work a payment covers.
+  const entriesFrom = Math.min(from, ...payments.map((p) => startOfDay(p.period_start ?? p.received_on, tz).getTime()));
+
   const [{ data: sourceRows }, { data: entryRows }, { data: categoryRows }] = await Promise.all([
     supabase.from("income_sources").select("id, name, pay_model, rate, currency, commission_pct, archived_at").order("created_at"),
     supabase
       .from("time_entries")
       .select("source_id, kind, category_id, units, started_at, ended_at")
-      .or(`ended_at.gte.${new Date(from).toISOString()},ended_at.is.null`),
+      .or(`ended_at.gte.${new Date(entriesFrom).toISOString()},ended_at.is.null`),
     supabase.from("categories").select("id, name, preset"),
   ]);
-  const entries = entryRows ?? [];
+  const allEntries = entryRows ?? [];
+  // The period's own entries, for hours and unpaid time.
+  const entries = allEntries.filter((e) => !e.ended_at || Date.parse(e.ended_at) >= from);
   // Active sources, plus archived ones that still have hours in the period.
   const sources = (sourceRows ?? []).filter((s) => !s.archived_at || entries.some((e) => e.source_id === s.id));
   const currencies = [...new Set(sources.map((s) => s.currency))];
@@ -44,14 +61,21 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
 
   const cards = sources.map((s) => {
     const rate = s.rate === null ? null : Number(s.rate);
-    const summary = summarize(
-      { pay_model: s.pay_model, rate, commission_pct: s.commission_pct === null ? null : Number(s.commission_pct) },
-      entries.filter((e) => e.source_id === s.id),
-      now,
-      from,
-    );
+    const rateSource = { pay_model: s.pay_model, rate, commission_pct: s.commission_pct === null ? null : Number(s.commission_pct) };
+    const mine = entries.filter((e) => e.source_id === s.id);
+    const summary = summarize(rateSource, mine, now, from);
+    // With payments in the period, the real rate comes from the money received; otherwise it's an estimate.
+    const sourcePayments = payments.filter((p) => p.source_id === s.id);
+    const received = sourcePayments.some((p) => periodShare(p, fromDay, today) > 0)
+      ? receivedSummary(rateSource, mine, sourcePayments, { fromDay, toDay: today, timeZone: tz, now })
+      : null;
+    const underpaid = sourcePayments.filter(
+      (p) => checkUnderpayment(rateSource, p, allEntries.filter((e) => e.source_id === s.id), { timeZone: tz, now })?.flagged,
+    ).length;
+    const realRate = received ? received.realRate : summary.realRate;
+    const gap = s.pay_model === "hourly" && rate && realRate !== null ? 1 - realRate / rate : null;
     const fx = ptax.get(s.currency) ?? null;
-    return { source: s, rate, summary, fx };
+    return { source: s, rate, summary, received, underpaid, realRate, gap, fx };
   });
 
   const hours = cards.reduce((sum, c) => sum + c.summary.hours, 0);
@@ -60,9 +84,15 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
   let earnedBrl = 0;
   let earnedHours = 0;
   for (const c of cards) {
-    if (c.summary.earned === null || !c.fx) continue;
-    earnedBrl += c.summary.earned * c.fx.rate;
-    earnedHours += c.summary.hours;
+    if (!c.fx) continue;
+    if (c.received) {
+      // Money received for the hours it covers, plus an estimate for hours not paid yet.
+      earnedBrl += (c.received.earned + c.received.uncoveredHours * (c.summary.realRate ?? 0)) * c.fx.rate;
+      earnedHours += c.received.coveredHours + (c.summary.realRate !== null ? c.received.uncoveredHours : 0);
+    } else if (c.summary.earned !== null) {
+      earnedBrl += c.summary.earned * c.fx.rate;
+      earnedHours += c.summary.hours;
+    }
   }
 
   const unpaidByCategory = new Map<string, number>();
@@ -112,6 +142,15 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
         ))}
       </nav>
 
+      <TakeHomeCard
+        t={t}
+        locale={locale}
+        month={new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" }).format(new Date(`${today.slice(0, 7)}-15T12:00:00Z`))}
+        takeHome={month.takeHome}
+        count={month.count}
+        mode={taxProfile(profile).tax_mode}
+      />
+
       {hours === 0 ? (
         <Card>
           <p className="m-0 text-[15px] text-ink-soft">{d.empty}</p>
@@ -129,7 +168,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
           </div>
 
           <div className="grid items-start gap-4 md:grid-cols-2">
-            {cards.map(({ source: s, rate, summary, fx }) => {
+            {cards.map(({ source: s, rate, summary, received, underpaid, realRate, gap, fx }) => {
               const advertised =
                 s.pay_model === "fixed" || rate === null
                   ? t.sources.fixed
@@ -137,16 +176,15 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
                       rate: money(s.currency, rate) + (s.pay_model === "per_task" ? t.sources.perTask : t.sources.perHour),
                     });
               const details: string[] = [];
-              if (summary.realRate !== null && s.currency !== "BRL") details.push(`${money(s.currency, summary.realRate)}/h`);
-              if (summary.gap !== null) {
-                const n = Math.round(summary.gap * 100);
+              if (realRate !== null && s.currency !== "BRL") details.push(`${money(s.currency, realRate)}/h`);
+              if (gap !== null) {
+                const n = Math.round(gap * 100);
                 details.push(n > 0 ? fill(d.gapLess, { n }) : n < 0 ? fill(d.gapMore, { n: -n }) : d.gapSame);
-              } else if (summary.paidRate !== null) {
+              } else if (!received && summary.paidRate !== null) {
                 details.push(fill(d.perPaidHour, { rate: `${money(s.currency, summary.paidRate)}/h` }));
               }
               if (summary.unpaidShare !== null) details.push(fill(d.unpaidOf, { n: pct(summary.unpaidShare) }));
-              const headline =
-                summary.realRate === null ? "—" : fx ? `${brl(summary.realRate * fx.rate)}/h` : `${money(s.currency, summary.realRate)}/h`;
+              const headline = realRate === null ? "—" : fx ? `${brl(realRate * fx.rate)}/h` : `${money(s.currency, realRate)}/h`;
 
               return (
                 <Card key={s.id} className="gap-3">
@@ -168,7 +206,31 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
                         <span className="font-mono text-[22px] font-semibold">{headline}</span>
                       </div>
                       {details.length > 0 && <p className="m-0 text-[13px] text-ink-soft">{details.join(" · ")}</p>}
-                      {summary.missing && (
+                      {received ? (
+                        <p className="m-0 text-[13px] text-ink-soft">
+                          {fill(d.fromPayments, { earned: money(s.currency, received.earned), hours: dur(received.coveredHours) })}
+                          {received.uncoveredHours > 0.01 && (
+                            <>
+                              <br />
+                              {fill(d.toReceive, {
+                                hours: dur(received.uncoveredHours),
+                                amount: money(s.currency, received.uncoveredHours * (summary.realRate ?? 0)),
+                              })}
+                            </>
+                          )}
+                        </p>
+                      ) : (
+                        summary.realRate !== null && <p className="m-0 text-[12px] text-muted">{d.estimatedRate}</p>
+                      )}
+                      {underpaid > 0 && (
+                        <p className="m-0 rounded-[10px] bg-amber-tint px-3 py-2 text-[13px] font-semibold text-amber-ink">
+                          {underpaid === 1 ? d.underpaidOne : fill(d.underpaidMany, { n: underpaid })}{" "}
+                          <Link href="/app/pagamentos" className="text-amber-ink">
+                            {d.seePayments}
+                          </Link>
+                        </p>
+                      )}
+                      {!received && summary.missing && (
                         <p className="m-0 text-[13px] font-semibold text-amber-ink">
                           {summary.missing === "units" ? d.missingUnits : d.missingFixed}
                         </p>

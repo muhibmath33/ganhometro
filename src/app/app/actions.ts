@@ -4,9 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { CATEGORY_PRESETS } from "@/i18n/app";
 import { type EntryError, type EntryKind, MIN_TIMER_MS, parseEntryForm, parseKind, parseUnits } from "@/lib/app/entries";
-import { parseSourceForm, type SourceError, WORK_TYPES } from "@/lib/app/sources";
+import { METHODS, type Method, type PaymentError, parsePaymentForm } from "@/lib/app/payments";
+import { CURRENCIES, parseSourceForm, type SourceError, WORK_TYPES } from "@/lib/app/sources";
+import { addDays, dayKey, isDay } from "@/lib/app/time";
+import { parseNumber } from "@/lib/calc";
+import { defaultPeriods } from "@/lib/money/received";
 import { getSession, requireUser } from "@/lib/app/session";
 import { site } from "@/lib/site";
+import type { Database } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -244,7 +249,138 @@ export async function deleteEntry(form: FormData) {
   redirect("/app/registro");
 }
 
+// --- Payments ------------------------------------------------------------------------
+
+export type PaymentFormState = { error?: PaymentError | "generic"; ok?: boolean; savedAt?: number } | null;
+
+// What a default work period needs: where the source's previous payment ended (before a day) and the
+// first day it has logged hours.
+async function periodContext(supabase: Supabase, sourceId: string, beforeDay: string, timeZone: string, excludeId = "") {
+  let previous = supabase
+    .from("payments")
+    .select("received_on, period_end")
+    .eq("source_id", sourceId)
+    .lt("received_on", beforeDay)
+    .order("received_on", { ascending: false })
+    .limit(1);
+  if (excludeId) previous = previous.neq("id", excludeId);
+  const [{ data: prev }, { data: first }] = await Promise.all([
+    previous,
+    supabase.from("time_entries").select("started_at").eq("source_id", sourceId).order("started_at").limit(1),
+  ]);
+  return {
+    previousEnd: prev?.[0] ? (prev[0].period_end ?? prev[0].received_on) : null,
+    firstWorkDay: first?.[0] ? dayKey(new Date(first[0].started_at), timeZone) : null,
+  };
+}
+
+export async function savePayment(_prev: PaymentFormState, form: FormData): Promise<PaymentFormState> {
+  const { supabase, profile } = await requireUser();
+  const id = String(form.get("id") ?? "");
+  const parsed = parsePaymentForm(form, dayKey(new Date(), profile.timezone));
+  if ("error" in parsed) return { error: parsed.error };
+  let row = parsed.data;
+  if (!row.period_start) {
+    const ctx = await periodContext(supabase, row.source_id, row.received_on, profile.timezone, id);
+    const [[start, end]] = defaultPeriods(ctx.previousEnd, ctx.firstWorkDay, [row.received_on]);
+    row = { ...row, period_start: start, period_end: end };
+  }
+  const { error } = id
+    ? await supabase.from("payments").update(row).eq("id", id)
+    : await supabase.from("payments").insert({ ...row, origin: "manual" });
+  // 23503: not one of the user's sources.
+  if (error) return { error: error.code === "23503" ? "source" : "generic" };
+  revalidatePath("/app", "layout");
+  if (id) redirect("/app/pagamentos");
+  return { ok: true, savedAt: Date.now() };
+}
+
+export async function deletePayment(form: FormData) {
+  const { supabase } = await requireUser();
+  await supabase.from("payments").delete().eq("id", String(form.get("id") ?? ""));
+  revalidatePath("/app", "layout");
+  redirect("/app/pagamentos");
+}
+
+// Rows picked in the statement preview: [{ day, amount, currency, source_id, ref }]. Rows already imported
+// (same import_ref) are skipped by the database.
+export async function importPayments(_prev: { error?: "generic" | "source" } | null, form: FormData) {
+  const { supabase, profile } = await requireUser();
+  let rows: unknown;
+  try {
+    rows = JSON.parse(String(form.get("rows") ?? "[]"));
+  } catch {
+    return { error: "generic" as const };
+  }
+  const latest = addDays(dayKey(new Date(), profile.timezone), 1);
+  const valid = (Array.isArray(rows) ? rows : [])
+    .slice(0, 500)
+    .filter(
+      (r): r is { day: string; amount: number; currency: string; source_id: string; ref: string } =>
+        r &&
+        isDay(r.day) &&
+        r.day <= latest &&
+        typeof r.amount === "number" &&
+        r.amount > 0 &&
+        r.amount <= 10_000_000 &&
+        (CURRENCIES as readonly string[]).includes(r.currency) &&
+        typeof r.source_id === "string" &&
+        typeof r.ref === "string" &&
+        r.ref.length <= 120,
+    );
+  if (!valid.length) return { error: "generic" as const };
+  const methodText = String(form.get("method") ?? "");
+  const method = (METHODS as readonly string[]).includes(methodText) ? (methodText as Method) : null;
+
+  // Default work periods, per source, oldest payment first.
+  const inserts: Database["public"]["Tables"]["payments"]["Insert"][] = [];
+  for (const sourceId of new Set(valid.map((r) => r.source_id))) {
+    const mine = valid.filter((r) => r.source_id === sourceId).sort((a, b) => a.day.localeCompare(b.day));
+    const ctx = await periodContext(supabase, sourceId, mine[0].day, profile.timezone);
+    const periods = defaultPeriods(ctx.previousEnd, ctx.firstWorkDay, mine.map((r) => r.day));
+    mine.forEach((r, i) =>
+      inserts.push({
+        source_id: sourceId,
+        amount: Math.round(r.amount * 100) / 100,
+        currency: r.currency,
+        received_on: r.day,
+        method,
+        period_start: periods[i][0],
+        period_end: periods[i][1],
+        origin: "import",
+        import_ref: r.ref,
+      }),
+    );
+  }
+  const { data, error } = await supabase
+    .from("payments")
+    .upsert(inserts, { onConflict: "user_id,import_ref", ignoreDuplicates: true })
+    .select("id");
+  if (error) return { error: error.code === "23503" ? ("source" as const) : ("generic" as const) };
+  revalidatePath("/app", "layout");
+  redirect(`/app/pagamentos?importados=${data?.length ?? 0}&existentes=${inserts.length - (data?.length ?? 0)}`);
+}
+
 // --- Settings ------------------------------------------------------------------------
+
+export async function saveTaxSettings(_prev: FormState, form: FormData): Promise<FormState> {
+  const { supabase, user } = await requireUser();
+  const inss = String(form.get("inss_plan") ?? "");
+  const dependents = Math.floor(parseNumber(String(form.get("dependents") ?? "0")));
+  const accountant = parseNumber(String(form.get("accountant_cost") ?? "250"));
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      tax_mode: form.get("tax_mode") === "cnpj" ? "cnpj" : "pf",
+      inss_plan: ["full", "simplified", "none"].includes(inss) ? inss : "full",
+      dependents: Math.min(Math.max(dependents, 0), 20),
+      accountant_cost: Math.min(Math.max(accountant, 0), 10_000),
+    })
+    .eq("id", user.id);
+  if (error) return { error: "generic" };
+  revalidatePath("/app", "layout");
+  return { ok: true };
+}
 
 export async function saveSettings(_prev: FormState, form: FormData): Promise<FormState> {
   const { supabase, user } = await requireUser();

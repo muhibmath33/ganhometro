@@ -53,6 +53,31 @@ export async function carneLeaoRate(year: number, month: number): Promise<Ptax |
   }
 }
 
+export type PtaxRow = { currency: "USD" | "EUR" | "GBP"; day: string; buy: number; sell: number; usd_parity: number };
+
+// Every closing rate between two days ("2026-10-01"), for the ptax_rates table. Not cached: the daily job and
+// the on-demand fill store the result.
+export async function fetchPtaxRange(currency: "USD" | "EUR" | "GBP", from: string, to: string): Promise<PtaxRow[]> {
+  const date = (day: string) => apiDate(new Date(`${day}T12:00:00Z`));
+  const range = `@dataInicial='${date(from)}'&@dataFinalCotacao='${date(to)}'`;
+  const url =
+    currency === "USD"
+      ? `${API}/CotacaoDolarPeriodo(dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)?${range}&$format=json&$top=2000`
+      : `${API}/CotacaoMoedaPeriodo(moeda=@moeda,dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)` +
+        `?@moeda='${currency}'&${range}&$filter=tipoBoletim eq 'Fechamento'&$format=json&$top=2000`;
+  const res = await fetch(encodeURI(url), { signal: AbortSignal.timeout(8000), cache: "no-store" });
+  if (!res.ok) throw new Error(`PTAX ${currency} range: HTTP ${res.status}`);
+  const rows: { cotacaoCompra: number; cotacaoVenda: number; dataHoraCotacao: string; paridadeCompra?: number }[] =
+    (await res.json()).value ?? [];
+  return rows.map((r) => ({
+    currency,
+    day: String(r.dataHoraCotacao).slice(0, 10),
+    buy: Number(r.cotacaoCompra),
+    sell: Number(r.cotacaoVenda),
+    usd_parity: currency === "USD" ? 1 : Number(r.paridadeCompra ?? 0) || 1,
+  }));
+}
+
 // Today's rate for each foreign currency the app supports; currencies the Banco Central didn't answer for are left out.
 export async function latestRates(): Promise<Partial<Record<"USD" | "EUR" | "GBP", Ptax>>> {
   const entries = await Promise.all((["USD", "EUR", "GBP"] as const).map(async (c) => [c, await latestPtax(c)] as const));

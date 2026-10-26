@@ -2,7 +2,7 @@
 
 **Status:** approved by Xinning on 27 Oct 2026, with the general design from [audience-expansion.md](audience-expansion.md).
 **Update, 27 Oct 2026:** Xinning decided to target freelancers paid in dollars from launch, not 3–6 months later. After the research in [freelancer-market.md](freelancer-market.md), their features are added below, the build order puts money and taxes first, and the plan (§9) is in sprints instead of calendar weeks. Decisions 8–12 in §11.
-**Progress:** sprints 1 and 2 are done (sign-in, platforms and clients, timer, time log, dashboard with the real rate), running on a local Supabase. Google sign-in waits for a Google Cloud OAuth setup.
+**Progress:** sprints 1–3 are done (sign-in, platforms and clients, timer, time log, real-rate dashboard, payments with statement import, "possível diferença", the month's take-home and tax settings), running on a local Supabase. Google sign-in waits for a Google Cloud OAuth setup.
 **Scope:** features 1–6 from the handoff, plus login, Free/Pro plans, card + Pix checkout, the weekly summary email, and the freelancer features (projects, retainers, invoices, time without a client, PF/CNPJ tax mode).
 **Timeline:** set by the items at the end of §9 (accounts, accountant, payment provider), not by the code.
 
@@ -167,8 +167,8 @@ Sprints of about one working session each. Every sprint is tested end to end (br
 | 1 | Supabase, sign-in by emailed code, schema + RLS, app shell, platforms and clients | ✅ Done |
 | 2 | Timer, time log, manual entries; dashboard with the real rate (features 1–2) | ✅ Done |
 | — | Validation (Phase 0, on the site): `/freelancers` rewrite, free calculators (take-home, PF or CNPJ, carnê-leão), signup questions, feature vote, interview script | ✅ Done |
-| 3 | **Payments** (quick add + CSV import from Wise, Payoneer, Upwork), fees per payment, PTAX rates table and daily job; **Quanto sobra**; real rate from money received; underpayment check (3) | Next |
-| 4 | **Taxes:** PF carnê-leão from receipts, DARF reminders; CNPJ estimate (DAS on exports, pro-labore); PF-or-CNPJ monitor (5). Accountant review starts here. | |
+| 3 | **Payments** (quick add + CSV import from Wise, Payoneer, Upwork), fees per payment, PTAX rates table and daily job; **Quanto sobra**; real rate from money received; underpayment check (3) | ✅ Done |
+| 4 | **Taxes:** PF carnê-leão from receipts, DARF reminders; CNPJ estimate (DAS on exports, pro-labore); PF-or-CNPJ monitor (5). Accountant review starts here. | Next |
 | 5 | **Reservas** and "pay yourself a salary"; late-payment alerts (4); Resend email; weekly summary | |
 | 6 | Projects (hourly or fixed price), monthly retainers, time without a client; **invoices** with due dates, partial payments and money owed | |
 | 7 | **Documents:** income report, DECORE pack, invoice and timesheet in English, payment reminder, dispute pack (6) | |

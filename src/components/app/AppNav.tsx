@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BriefcaseIcon, ChartIcon, ClockIcon, ListIcon, SlidersIcon } from "../icons";
+import { CardIcon, ChartIcon, ClockIcon, ListIcon, SlidersIcon } from "../icons";
 
-const ICONS = { today: ClockIcon, dashboard: ChartIcon, log: ListIcon, sources: BriefcaseIcon, settings: SlidersIcon };
+const ICONS = { today: ClockIcon, dashboard: ChartIcon, payments: CardIcon, log: ListIcon, settings: SlidersIcon };
 
-export type NavItem = { href: string; label: string; icon: keyof typeof ICONS };
+// also: other paths that belong to the item (platforms live under Settings).
+export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; also?: string[] };
 
 // A tab bar at the bottom on phones, links in the header from 640px up.
 export function AppNav({ items }: { items: NavItem[] }) {
@@ -17,7 +18,8 @@ export function AppNav({ items }: { items: NavItem[] }) {
       className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-white pb-[env(safe-area-inset-bottom)] sm:static sm:flex sm:flex-wrap sm:gap-1 sm:border-0 sm:bg-transparent sm:pb-0"
     >
       {items.map((item) => {
-        const active = item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href);
+        const active =
+          item.href === "/app" ? pathname === "/app" : [item.href, ...(item.also ?? [])].some((path) => pathname.startsWith(path));
         const Icon = ICONS[item.icon];
         return (
           <Link

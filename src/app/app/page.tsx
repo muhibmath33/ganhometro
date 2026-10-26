@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { type RunningEntry, Timer, TodayTotals, type TodayRow } from "@/components/app/Timer";
+import { TakeHomeCard } from "@/components/app/TakeHomeCard";
 import { Card, PageSkeleton } from "@/components/app/ui";
 import { categoryName, getAppDictionary } from "@/i18n/app";
+import { monthSummary, taxProfile } from "@/lib/app/money";
 import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { dayKey, startOfDay } from "@/lib/app/time";
 
@@ -63,12 +65,30 @@ async function Today() {
   const defaultSourceId = last && active.some((s) => s.id === last.source_id) ? last.source_id : (active[0]?.id ?? null);
   const date = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(serverNow);
 
+  // This month's take-home: first for freelancers (what's left matters most to them), after the timer for others.
+  const today = dayKey(new Date(serverNow), tz);
+  const month = await monthSummary(supabase, profile, Number(today.slice(0, 4)), Number(today.slice(5, 7)));
+  const takeHome = (
+    <TakeHomeCard
+      t={t}
+      locale={locale}
+      month={new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" }).format(new Date(`${today.slice(0, 7)}-15T12:00:00Z`))}
+      takeHome={month.takeHome}
+      count={month.count}
+      mode={taxProfile(profile).tax_mode}
+      compact
+    />
+  );
+  const freelancer = profile.work_type === "freelancer";
+
   return (
     <>
       <div className="flex flex-col gap-1">
         <h1 className="m-0 text-[28px] font-extrabold tracking-[-0.02em]">{t.today.title}</h1>
         <p className="m-0 text-[15px] text-ink-soft first-letter:uppercase">{date}</p>
       </div>
+
+      {freelancer && takeHome}
 
       <div className="grid items-start gap-5 md:grid-cols-[1.25fr_1fr]">
         <Card>
@@ -92,6 +112,8 @@ async function Today() {
           <TodayTotals t={t} locale={locale} rows={[...totals.values()]} running={running} dayStart={dayStart} serverNow={serverNow} />
         </Card>
       </div>
+
+      {!freelancer && takeHome}
     </>
   );
 }

@@ -67,6 +67,11 @@ export function startOfDay(day: string, timeZone: string): Date {
   return zonedToUtc(day, "00:00", timeZone) ?? new Date(NaN);
 }
 
+// "2026-10-27", and a real date.
+export function isDay(s: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) && new Date(`${s}T00:00:00Z`).toISOString().slice(0, 10) === s;
+}
+
 // "2026-10-27" + 5 → "2026-11-01"
 export function addDays(day: string, n: number): string {
   const [y, m, d] = day.split("-").map(Number);

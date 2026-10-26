@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export type Profile = Pick<
   Database["public"]["Tables"]["profiles"]["Row"],
-  "locale" | "timezone" | "work_type" | "plan" | "pro_until" | "onboarded_at"
+  "locale" | "timezone" | "work_type" | "plan" | "pro_until" | "onboarded_at" | "tax_mode" | "inss_plan" | "dependents" | "accountant_cost"
 >;
 
 // Memoized per request, so the layout and the page share one lookup.
@@ -22,7 +22,7 @@ export const getSession = cache(async () => {
   if (!data.user) return { supabase, user: null, profile: null };
   const { data: profile } = await supabase
     .from("profiles")
-    .select("locale, timezone, work_type, plan, pro_until, onboarded_at")
+    .select("locale, timezone, work_type, plan, pro_until, onboarded_at, tax_mode, inss_plan, dependents, accountant_cost")
     .eq("id", data.user.id)
     .single();
   return { supabase, user: { id: data.user.id, email: data.user.email ?? "" }, profile: profile as Profile | null };

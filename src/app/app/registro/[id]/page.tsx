@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { DeleteEntryButton, EntryForm } from "@/components/app/EntryForm";
+import { deleteEntry } from "@/app/app/actions";
+import { ConfirmDelete } from "@/components/app/ConfirmDelete";
+import { EntryForm } from "@/components/app/EntryForm";
 import { Card, PageSkeleton } from "@/components/app/ui";
 import { categoryName, getAppDictionary } from "@/i18n/app";
 import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
@@ -56,7 +58,11 @@ async function EditEntry({ params }: { params: PageProps<"/app/registro/[id]">["
         }}
       />
       <hr className="m-0 border-0 border-t border-line" />
-      <DeleteEntryButton t={t} id={entry.id} />
+      <ConfirmDelete
+        action={deleteEntry}
+        id={entry.id}
+        labels={{ button: t.entry.delete, question: t.entry.confirmDelete, confirm: t.entry.confirm, cancel: t.common.cancel }}
+      />
     </Card>
   );
 }
