@@ -14,6 +14,8 @@ export type RecentRow = {
   form: string;
   source: string;
   campaign: string;
+  work: string;
+  landing: string;
 };
 
 export type Stats = {
@@ -26,7 +28,17 @@ export type Stats = {
   byCampaign: Row[];
   byLanguage: Row[];
   byForm: Row[];
+  byWork: Row[];
+  byLanding: Row[];
   recent: RecentRow[];
+};
+
+const WORK_LABELS: Record<string, string> = {
+  ai: "AI training",
+  freelancer: "Freelancer (clients abroad)",
+  teacher: "Online teaching",
+  creator: "Content creation",
+  other: "Other",
 };
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -70,6 +82,8 @@ export function computeStats(all: Contact[], listId: number, now: Date, days = 3
       const form = text(c.attributes?.SIGNUP_SOURCE);
       return form === "hero" ? "Top form" : form === "final" ? "Bottom form" : "Other";
     }),
+    byWork: breakdown(contacts, (c) => WORK_LABELS[text(c.attributes?.WORK_TYPE)] ?? "(didn't answer)"),
+    byLanding: breakdown(contacts, (c) => (text(c.attributes?.LANDING_PAGE) === "freelancers" ? "/freelancers" : "Main page (AI trainers)")),
     recent: [...contacts]
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
       .slice(0, 25)
@@ -81,6 +95,8 @@ export function computeStats(all: Contact[], listId: number, now: Date, days = 3
         form: text(c.attributes?.SIGNUP_SOURCE),
         source: text(c.attributes?.UTM_SOURCE),
         campaign: text(c.attributes?.UTM_CAMPAIGN),
+        work: WORK_LABELS[text(c.attributes?.WORK_TYPE)] ?? "",
+        landing: text(c.attributes?.LANDING_PAGE) === "freelancers" ? "Freelancers" : "Main",
       })),
   };
 }

@@ -34,7 +34,12 @@ export default function EnglishPrivacyPage() {
         </li>
         <li>
           <strong>Consent record</strong>: the date, time and form where you agreed to receive
-          our emails, and the language of the page.
+          our emails, the language and the page where you signed up.
+        </li>
+        <li>
+          <strong>What you do</strong> (optional): if you pick an option in the form, such as
+          &quot;AI training&quot; or &quot;freelancer&quot;, so we understand who is interested
+          in Ganhômetro.
         </li>
         <li>
           <strong>Where your visit came from</strong>: the campaign parameters (UTM) of the link
@@ -42,7 +47,7 @@ export default function EnglishPrivacyPage() {
           your browser until you submit the form.
         </li>
         <li>
-          <strong>Usage statistics</strong>: we use Plausible Analytics, which counts visits in
+          <strong>Usage statistics</strong>: we use Umami Analytics, which counts visits in
           aggregate, without cookies and without storing data that identifies you.
         </li>
         <li>
@@ -78,7 +83,7 @@ export default function EnglishPrivacyPage() {
       <ul>
         <li>Brevo (France): sending emails and managing the list.</li>
         <li>Vercel (United States): website hosting.</li>
-        <li>Plausible Analytics (Estonia, European Union): cookie-free statistics.</li>
+        <li>Umami Analytics (European Union or United States): cookie-free statistics.</li>
       </ul>
       <p>We may also share data when required by law or by a court order.</p>
 

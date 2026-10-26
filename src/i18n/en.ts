@@ -171,6 +171,15 @@ const en: Dictionary = {
     doubleOptIn: "Almost there! Confirm your signup in the email we just sent.",
     bonus: "Download the free spreadsheet: Carnê-leão 2026 for people paid in dollars (in Portuguese)",
     bonusGuide: "Download the quick guide (PDF, in Portuguese)",
+    workLabel: "What do you do? (optional)",
+    workPlaceholder: "Choose an option",
+    workOptions: {
+      ai: "AI training (Mercor, Outlier, DataAnnotation…)",
+      freelancer: "Freelancer with clients abroad",
+      teacher: "Online teaching (Cambly, Preply, italki…)",
+      creator: "Content creation (YouTube, TikTok…)",
+      other: "Other",
+    },
     errors: {
       invalid_email: "Enter a valid email address.",
       consent_required: "Tick the consent box to join the waitlist.",

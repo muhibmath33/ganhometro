@@ -4,6 +4,7 @@ export type Locale = (typeof locales)[number];
 // The same page in each language. Used by the language switch, hreflang tags and the sitemap.
 export const routes = {
   home: { "pt-BR": "/", en: "/en" },
+  freelancers: { "pt-BR": "/freelancers", en: "/en/freelancers" },
   privacy: { "pt-BR": "/privacidade", en: "/en/privacy" },
   terms: { "pt-BR": "/termos", en: "/en/terms" },
 } as const;

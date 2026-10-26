@@ -208,18 +208,21 @@ export function Dashboard({ stats }: { stats: Stats }) {
         <Breakdown title="By campaign" note="utm_campaign" rows={stats.byCampaign} />
         <Breakdown title="By language" rows={stats.byLanguage} />
         <Breakdown title="By form" note="Top of the page or bottom" rows={stats.byForm} />
+        <Breakdown title="What they do" note="Optional signup question: which audiences are signing up" rows={stats.byWork} />
+        <Breakdown title="By landing page" note="Main page vs. /freelancers test page" rows={stats.byLanding} />
       </div>
 
       <section className="flex flex-col gap-3 rounded-2xl border border-line bg-white p-5">
         <h2 className="m-0 text-[16px] font-bold">Latest signups</h2>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-[13px]">
+          <table className="w-full min-w-[860px] border-collapse text-[13px]">
             <thead>
               <tr className="border-b border-line text-left text-muted">
                 <th className="py-2 pr-3 font-semibold">Signed up</th>
                 <th className="py-2 pr-3 font-semibold">Email</th>
                 <th className="py-2 pr-3 font-semibold">Language</th>
-                <th className="py-2 pr-3 font-semibold">Form</th>
+                <th className="py-2 pr-3 font-semibold">Page / form</th>
+                <th className="py-2 pr-3 font-semibold">Does</th>
                 <th className="py-2 pr-3 font-semibold">Channel / campaign</th>
                 <th className="py-2 font-semibold">Consent given</th>
               </tr>
@@ -230,7 +233,8 @@ export function Dashboard({ stats }: { stats: Stats }) {
                   <td className="py-2 pr-3 whitespace-nowrap">{fmtDateTime(r.createdAt)}</td>
                   <td className="py-2 pr-3">{r.email}</td>
                   <td className="py-2 pr-3">{r.language === "en" ? "EN" : "PT"}</td>
-                  <td className="py-2 pr-3">{formLabel(r.form)}</td>
+                  <td className="py-2 pr-3 whitespace-nowrap">{r.landing} · {formLabel(r.form)}</td>
+                  <td className="py-2 pr-3">{r.work || "—"}</td>
                   <td className="py-2 pr-3">{[r.source, r.campaign].filter(Boolean).join(" / ") || "—"}</td>
                   <td className="py-2 whitespace-nowrap">{fmtDateTime(r.consentAt)}</td>
                 </tr>

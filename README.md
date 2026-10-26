@@ -2,7 +2,8 @@
 
 The waitlist site for Ganhômetro, in Brazilian Portuguese (`/`) and English (`/en`), with a PT/EN switch in the navbar.
 Next.js 16 (App Router) + Tailwind CSS 4, deployed on Vercel.
-Signups go to a Brevo list, and analytics use Plausible (no cookies).
+Signups go to a Brevo list, and analytics use Umami Cloud (free, no cookies).
+There's also a second landing page for freelancers paid in dollars at `/freelancers` (and `/en/freelancers`), used to test that audience before launch.
 
 ## Run locally
 
@@ -45,7 +46,7 @@ Checks: `npm run lint` and `npm run build`.
 
 ## Setup
 
-**Who owns what.** Xinning owns the GitHub, Vercel, Brevo and Plausible accounts. Gabriel, the Brazilian
+**Who owns what.** Xinning owns the GitHub, Vercel, Brevo and Umami accounts. Gabriel, the Brazilian
 partner, handles anything that needs a Brazilian ID. For this site, that's the `ganhometro.com.br` domain,
 bought at registro.br with his CPF. The marketer gets access to accounts, never ownership.
 
@@ -54,7 +55,7 @@ bought at registro.br with his CPF. The marketer gets access to accounts, never 
 1. Create a contact list named **"Waitlist"** and note its **ID** → `BREVO_LIST_ID`.
 2. Create an API key (SMTP & API → API keys) → `BREVO_API_KEY`.
 3. Contacts → Settings → Contact attributes: create these **Text** attributes:
-   `SIGNUP_SOURCE`, `CONSENT_AT`, `LANGUAGE`, `UTM_SOURCE`, `UTM_MEDIUM`, `UTM_CAMPAIGN`, `UTM_CONTENT`, `UTM_TERM`.
+   `SIGNUP_SOURCE`, `CONSENT_AT`, `LANGUAGE`, `LANDING_PAGE`, `WORK_TYPE`, `UTM_SOURCE`, `UTM_MEDIUM`, `UTM_CAMPAIGN`, `UTM_CONTENT`, `UTM_TERM`.
    They hold the LGPD consent record and the campaign that brought each signup. `LANGUAGE` (`pt-BR` or `en`) lets you email people in their language.
    If they are missing, the route still saves the email, but without this data.
 4. Recommended: turn on double opt-in. Create a "double opt-in" template in Brevo, then set
@@ -63,11 +64,15 @@ bought at registro.br with his CPF. The marketer gets access to accounts, never 
    Ready-to-paste email texts (PT and EN) and the automation steps are in `docs/emails/brevo-emails.md`.
 5. Authenticate the sending domain in Brevo (SPF/DKIM/DMARC), so emails don't land in spam.
 
-### 2. Plausible
+### 2. Umami (analytics)
 
-1. Add the site in Plausible and set `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` to the same domain.
-2. Add three custom-event goals: **`Signup`** (with the custom property `source` = `hero` or `final`), **`Calculator used`** and **`Bonus download`**.
-3. UTM parameters show up in Plausible automatically under Sources → Campaigns.
+1. Create a free account at **cloud.umami.is** (choose the EU region if asked) and add the website.
+2. Copy its **Website ID** into `NEXT_PUBLIC_UMAMI_WEBSITE_ID` and redeploy.
+3. The site sends these custom events:
+   - **`Signup`**, with `source` (top/bottom form), `locale`, `landing` (`ai` or `freelancers`) and `work` (the answer to "O que você faz?");
+   - **`Calculator used`**;
+   - **`Bonus download`**, with `file` (spreadsheet or guide).
+4. UTM campaigns show up in Umami automatically.
 
 ### 3. Deploy on Vercel
 

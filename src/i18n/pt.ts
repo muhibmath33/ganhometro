@@ -171,6 +171,15 @@ const pt = {
     doubleOptIn: "Quase lá! Confirme sua inscrição no e-mail que acabamos de enviar.",
     bonus: "Baixe a planilha grátis: Carnê-leão 2026 para quem recebe em dólar",
     bonusGuide: "Baixe o guia rápido (PDF)",
+    workLabel: "O que você faz? (opcional)",
+    workPlaceholder: "Escolha uma opção",
+    workOptions: {
+      ai: "Treino IA (Mercor, Outlier, DataAnnotation…)",
+      freelancer: "Freelancer com clientes no exterior",
+      teacher: "Dou aulas online (Cambly, Preply, italki…)",
+      creator: "Crio conteúdo (YouTube, TikTok…)",
+      other: "Outro",
+    },
     errors: {
       invalid_email: "Digite um e-mail válido.",
       consent_required: "Marque a caixa de consentimento para entrar na lista.",

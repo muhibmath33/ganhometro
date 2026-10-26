@@ -4,7 +4,7 @@ import { SiteHeader } from "./SiteHeader";
 
 type Props = {
   locale: Locale;
-  page: Exclude<RouteKey, "home">;
+  page: Exclude<RouteKey, "home" | "freelancers">;
   title: string;
   children: React.ReactNode;
 };

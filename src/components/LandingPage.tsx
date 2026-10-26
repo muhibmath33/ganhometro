@@ -1,4 +1,4 @@
-import { fill, getDictionary, type Locale } from "@/i18n";
+import { type Audience, fill, getDictionary, type Locale } from "@/i18n";
 import { calculate, formatMoney } from "@/lib/calc";
 import { Calculator } from "./Calculator";
 import { Faq } from "./Faq";
@@ -20,8 +20,9 @@ const autoGrid = {
   300: "grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(300px,100%),1fr))]",
 };
 
-export function LandingPage({ locale }: { locale: Locale }) {
-  const t = getDictionary(locale);
+// One layout for every audience; only the text changes (src/i18n/freelancers.ts).
+export function LandingPage({ locale, audience = "ai" }: { locale: Locale; audience?: Audience }) {
+  const t = getDictionary(locale, audience);
   const ex = t.example;
   const rate = t.calculator.defaultRate;
 
@@ -51,7 +52,7 @@ export function LandingPage({ locale }: { locale: Locale }) {
 
   return (
     <>
-      <SiteHeader locale={locale} page="home" />
+      <SiteHeader locale={locale} page={audience === "freelancers" ? "freelancers" : "home"} />
 
       <main>
         {/* Hero */}
@@ -68,6 +69,7 @@ export function LandingPage({ locale }: { locale: Locale }) {
             <WaitlistForm
               source="hero"
               locale={locale}
+              audience={audience}
               t={t.form}
               buttonLabel={t.hero.button}
               successText={t.hero.success}
@@ -279,6 +281,7 @@ export function LandingPage({ locale }: { locale: Locale }) {
           <WaitlistForm
             source="final"
             locale={locale}
+            audience={audience}
             t={t.form}
             buttonLabel={t.final.button}
             successText={t.final.success}

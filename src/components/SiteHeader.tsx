@@ -14,10 +14,10 @@ const languages = [
   { locale: "en", short: "EN", name: "English" },
 ] as const;
 
-// On the home page anchors stay relative ("#como") so the UTM query string is kept.
+// On a landing page anchors stay relative ("#como") so the UTM query string is kept.
 export function SiteHeader({ locale, page }: { locale: Locale; page: RouteKey }) {
   const t = getDictionary(locale).nav;
-  const home = page === "home";
+  const home = page === "home" || page === "freelancers";
   const anchor = (id: string) => (home ? `#${id}` : `${routes.home[locale]}#${id}`);
 
   return (

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { Dictionary, Locale } from "@/i18n";
+import type { Audience, Dictionary, Locale } from "@/i18n";
 import { routes } from "@/i18n/config";
 import { track } from "@/lib/analytics";
 import { site } from "@/lib/site";
@@ -12,6 +12,7 @@ import { CheckIcon, DownloadIcon } from "./icons";
 type Props = {
   source: "hero" | "final";
   locale: Locale;
+  audience: Audience;
   t: Dictionary["form"];
   buttonLabel: string;
   successText: string;
@@ -19,9 +20,11 @@ type Props = {
 };
 
 type ErrorCode = keyof Dictionary["form"]["errors"];
+type WorkType = keyof Dictionary["form"]["workOptions"];
 
-export function WaitlistForm({ source, locale, t, buttonLabel, successText, centered = false }: Props) {
+export function WaitlistForm({ source, locale, audience, t, buttonLabel, successText, centered = false }: Props) {
   const [email, setEmail] = useState("");
+  const [work, setWork] = useState<WorkType | "">(""); // optional: tells us which audiences sign up
   const [consent, setConsent] = useState(false);
   const [website, setWebsite] = useState(""); // honeypot
   const [status, setStatus] = useState<"idle" | "sending" | "done">("idle");
@@ -36,7 +39,7 @@ export function WaitlistForm({ source, locale, t, buttonLabel, successText, cent
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, consent, source, locale, website, utm: getUtm() }),
+        body: JSON.stringify({ email, consent, source, locale, landing: audience, work, website, utm: getUtm() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
@@ -46,7 +49,7 @@ export function WaitlistForm({ source, locale, t, buttonLabel, successText, cent
       }
       setDoubleOptIn(Boolean(data.doubleOptIn));
       setStatus("done");
-      track("Signup", { source, locale });
+      track("Signup", { source, locale, landing: audience, work: work || "none" });
     } catch {
       setStatus("idle");
       setError("generic");
@@ -113,6 +116,25 @@ export function WaitlistForm({ source, locale, t, buttonLabel, successText, cent
         >
           {status === "sending" ? t.sending : buttonLabel}
         </button>
+      </div>
+      <div className={`flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-left ${centered ? "justify-center" : ""}`}>
+        <label htmlFor={`work-${source}`} className="text-[13px] font-semibold text-ink-soft">
+          {t.workLabel}
+        </label>
+        <select
+          id={`work-${source}`}
+          name="work"
+          value={work}
+          onChange={(e) => setWork(e.target.value as WorkType | "")}
+          className="min-h-11 flex-[1_1_220px] cursor-pointer rounded-[10px] border border-field bg-white px-3 font-sans text-[15px] text-ink"
+        >
+          <option value="">{t.workPlaceholder}</option>
+          {(Object.keys(t.workOptions) as WorkType[]).map((key) => (
+            <option key={key} value={key}>
+              {t.workOptions[key]}
+            </option>
+          ))}
+        </select>
       </div>
       <label
         htmlFor={consentId}

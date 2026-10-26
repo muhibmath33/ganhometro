@@ -7,12 +7,16 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
 const SOURCES = ["hero", "final"];
 const LOCALES = ["pt-BR", "en"];
+const LANDINGS = ["ai", "freelancers"];
+const WORK_TYPES = ["ai", "freelancer", "teacher", "creator", "other"];
 
 type Body = {
   email?: unknown;
   consent?: unknown;
   source?: unknown;
   locale?: unknown;
+  landing?: unknown;
+  work?: unknown;
   website?: unknown;
   utm?: unknown;
 };
@@ -44,6 +48,9 @@ export async function POST(request: Request) {
 
   const source = typeof body.source === "string" && SOURCES.includes(body.source) ? body.source : "site";
   const locale = typeof body.locale === "string" && LOCALES.includes(body.locale) ? body.locale : "pt-BR";
+  const pick = (value: unknown, allowed: string[]) => (typeof value === "string" && allowed.includes(value) ? value : "");
+  const landing = pick(body.landing, LANDINGS) || "ai";
+  const work = pick(body.work, WORK_TYPES); // optional answer to "O que você faz?"
   const utm = body.utm && typeof body.utm === "object" ? (body.utm as Record<string, unknown>) : {};
 
   // LGPD: keep a record of when and where consent was given.
@@ -51,7 +58,9 @@ export async function POST(request: Request) {
     SIGNUP_SOURCE: source,
     CONSENT_AT: new Date().toISOString(),
     LANGUAGE: locale,
+    LANDING_PAGE: landing,
   };
+  if (work) attributes.WORK_TYPE = work;
   for (const key of UTM_KEYS) {
     const value = utm[key];
     if (typeof value === "string" && value) attributes[key.toUpperCase()] = value.slice(0, 200);

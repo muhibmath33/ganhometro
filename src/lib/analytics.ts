@@ -1,17 +1,12 @@
-// Plausible custom events. No-op when Plausible is not configured.
-
-type Plausible = ((
-  event: string,
-  options?: { props?: Record<string, string> },
-) => void) & { q?: unknown[] };
+// Umami custom events. No-op until Umami is configured and its script has loaded.
 
 declare global {
   interface Window {
-    plausible?: Plausible;
+    umami?: { track: (event: string, data?: Record<string, string>) => void };
   }
 }
 
-export function track(event: string, props?: Record<string, string>): void {
-  if (typeof window === "undefined" || !window.plausible) return;
-  window.plausible(event, props ? { props } : undefined);
+export function track(event: string, data?: Record<string, string>): void {
+  if (typeof window === "undefined") return;
+  window.umami?.track(event, data);
 }

@@ -32,9 +32,9 @@ export const metadata: Metadata = {
   },
 };
 
-const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
-const plausibleSrc =
-  process.env.NEXT_PUBLIC_PLAUSIBLE_SRC || "https://plausible.io/js/script.js";
+// Umami Cloud: free, cookieless analytics. Off until the website ID is set.
+const umamiWebsiteId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
+const umamiSrc = process.env.NEXT_PUBLIC_UMAMI_SRC || "https://cloud.umami.is/script.js";
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -45,16 +45,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="font-sans">
         {children}
         <UtmCapture />
-        {plausibleDomain && (
-          <>
-            <Script id="plausible-queue">
-              {
-                "window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)}"
-              }
-            </Script>
-            <Script data-domain={plausibleDomain} src={plausibleSrc} />
-          </>
-        )}
+        {umamiWebsiteId && <Script src={umamiSrc} data-website-id={umamiWebsiteId} strategy="afterInteractive" />}
       </body>
     </html>
   );

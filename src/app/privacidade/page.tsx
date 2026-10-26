@@ -33,7 +33,12 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Registro do consentimento</strong>: data, hora e o formulário em que
-          você aceitou receber nossos e-mails, e o idioma da página.
+          você aceitou receber nossos e-mails, o idioma e a página em que se cadastrou.
+        </li>
+        <li>
+          <strong>O que você faz</strong> (opcional): se você escolher uma opção no
+          formulário, como &quot;treino IA&quot; ou &quot;freelancer&quot;, para entendermos
+          quem se interessa pelo Ganhômetro.
         </li>
         <li>
           <strong>Origem da visita</strong>: os parâmetros de campanha (UTM) do link que
@@ -41,7 +46,7 @@ export default function PrivacyPage() {
           guardados no seu navegador até você enviar o formulário.
         </li>
         <li>
-          <strong>Estatísticas de uso</strong>: usamos o Plausible Analytics, que conta
+          <strong>Estatísticas de uso</strong>: usamos o Umami Analytics, que conta
           visitas de forma agregada, sem cookies e sem guardar dados que identifiquem
           você.
         </li>
@@ -91,7 +96,7 @@ export default function PrivacyPage() {
       <ul>
         <li>Brevo (França): envio de e-mails e gestão da lista.</li>
         <li>Vercel (Estados Unidos): hospedagem do site.</li>
-        <li>Plausible Analytics (Estônia, União Europeia): estatísticas sem cookies.</li>
+        <li>Umami Analytics (União Europeia ou Estados Unidos): estatísticas sem cookies.</li>
       </ul>
       <p>
         Também podemos compartilhar dados quando a lei ou uma ordem judicial exigir.
