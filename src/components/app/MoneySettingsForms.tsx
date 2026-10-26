@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { type FormState, saveEmailSettings, saveReserveSettings } from "@/app/app/actions";
+import { type FormState, saveDocSettings, saveEmailSettings, saveReserveSettings } from "@/app/app/actions";
 import type { AppDictionary } from "@/i18n/app";
 import { fieldInput, fieldLabel } from "./SourceFields";
 import { FormMessage, SubmitButton } from "./ui";
@@ -58,6 +58,37 @@ export function EmailSettingsForm({ t, values }: { t: AppDictionary; values: { r
       <label className={check}>
         <input type="checkbox" name="email_weekly" defaultChecked={values.weekly} className="size-5 shrink-0 accent-brand" />
         {s.emailWeekly}
+      </label>
+      <FormMessage t={t} state={state} okText={s.saved} />
+      <SubmitButton pending={pending} label={t.common.save} pendingLabel={t.common.saving} />
+    </form>
+  );
+}
+
+// The name and details printed on documents, and how clients pay (for invoices).
+export function DocSettingsForm({ t, values }: { t: AppDictionary; values: { name: string; details: string; payment: string } }) {
+  const s = t.settings;
+  const hint = "text-[12px] font-normal text-muted";
+  const [state, action, pending] = useActionState<FormState, FormData>(saveDocSettings, null);
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <label className={fieldLabel}>
+        {s.docName}
+        <input name="doc_name" maxLength={100} defaultValue={values.name} autoComplete="name" className={fieldInput} />
+      </label>
+      <label className={fieldLabel}>
+        <span>
+          {s.docDetails} <span className={hint}>({t.common.optional})</span>
+        </span>
+        <textarea name="doc_details" rows={3} maxLength={600} defaultValue={values.details} className={`${fieldInput} py-2.5`} />
+        <span className={hint}>{s.docDetailsHint}</span>
+      </label>
+      <label className={fieldLabel}>
+        <span>
+          {s.paymentInstructions} <span className={hint}>({t.common.optional})</span>
+        </span>
+        <textarea name="payment_instructions" rows={4} maxLength={1000} defaultValue={values.payment} className={`${fieldInput} py-2.5`} />
+        <span className={hint}>{s.paymentInstructionsHint}</span>
       </label>
       <FormMessage t={t} state={state} okText={s.saved} />
       <SubmitButton pending={pending} label={t.common.save} pendingLabel={t.common.saving} />

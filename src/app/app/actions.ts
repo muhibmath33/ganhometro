@@ -580,6 +580,22 @@ export async function saveReserveSettings(_prev: FormState, form: FormData): Pro
   return { ok: true };
 }
 
+// Name, details and payment instructions printed on documents. Empty fields are saved as "not given".
+export async function saveDocSettings(_prev: FormState, form: FormData): Promise<FormState> {
+  const { supabase, user } = await requireUser();
+  const text = (field: string, max: number) => {
+    const value = String(form.get(field) ?? "").trim().replace(/\r\n/g, "\n");
+    return value ? value.slice(0, max) : null;
+  };
+  const { error } = await supabase
+    .from("profiles")
+    .update({ doc_name: text("doc_name", 100), doc_details: text("doc_details", 600), payment_instructions: text("payment_instructions", 1000) })
+    .eq("id", user.id);
+  if (error) return { error: "generic" };
+  revalidatePath("/app", "layout");
+  return { ok: true };
+}
+
 export async function saveEmailSettings(_prev: FormState, form: FormData): Promise<FormState> {
   const { supabase, user } = await requireUser();
   const { error } = await supabase

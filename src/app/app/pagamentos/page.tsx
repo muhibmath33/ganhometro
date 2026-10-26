@@ -75,6 +75,16 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/app/pagame
       <div className="flex flex-col gap-1">
         <h1 className="m-0 text-[28px] font-extrabold tracking-[-0.02em]">{t.payments.title}</h1>
         <p className="m-0 max-w-[640px] text-[15px] text-ink-soft">{t.payments.lead}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {[
+            { href: "/app/faturas", label: t.invoices.title },
+            { href: "/app/documentos", label: t.payments.documents },
+          ].map((l) => (
+            <Link key={l.href} href={l.href} className="rounded-[9px] border border-line bg-white px-3 py-2 text-[14px] font-semibold no-underline">
+              {l.label}
+            </Link>
+          ))}
+        </div>
       </div>
 
       <LateAlerts t={t} locale={locale} alerts={late} invoices={invoices} />
@@ -227,7 +237,10 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/app/pagame
                           {fill(t.payments.underpaid, {
                             amount: formatMoney(symbol, under.difference, locale),
                             expected: formatMoney(symbol, under.expected, locale),
-                          })}
+                          })}{" "}
+                          <Link href={`/app/documentos/revisao?pagamento=${p.id}`} className="text-amber-ink">
+                            {t.payments.review} →
+                          </Link>
                         </span>
                       )}
                     </div>

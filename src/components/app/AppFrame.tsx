@@ -61,7 +61,7 @@ export async function AppFrame({ children }: { children: React.ReactNode }) {
             items={[
               { href: "/app", label: t.nav.today, icon: "today" },
               { href: "/app/painel", label: t.nav.dashboard, icon: "dashboard" },
-              { href: "/app/pagamentos", label: t.nav.payments, icon: "payments", also: ["/app/faturas"] },
+              { href: "/app/pagamentos", label: t.nav.payments, icon: "payments", also: ["/app/faturas", "/app/documentos"] },
               { href: "/app/impostos", label: t.nav.taxes, icon: "taxes" },
               { href: "/app/registro", label: t.nav.log, icon: "log", desktopOnly: true },
               { href: "/app/ajustes", label: t.nav.settings, icon: "settings", also: ["/app/fontes"] },

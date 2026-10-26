@@ -1,0 +1,17 @@
+# What `npx vercel` must not upload (it deploys straight from this folder, not from GitHub).
+
+# Secrets: production settings live in the Vercel dashboard, never in uploaded files.
+# .env.local holds the local Supabase keys and would override them in the build.
+.env*
+!.env.example
+
+# Installed and built on Vercel
+node_modules
+.next
+.vercel
+tsconfig.tsbuildinfo
+
+# Local-only tooling (assets/ stays: the link preview images read its fonts)
+bonus/__pycache__
+supabase/.temp
+supabase/.branches

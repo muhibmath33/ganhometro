@@ -52,6 +52,8 @@ server store exchange rates), add any long random `CRON_SECRET`, then restart `n
   payments) and `…/api/cron/weekly` (the Monday summary).
 - App emails go to the same local inbox when `.env.local` has `MAILPIT_URL=http://127.0.0.1:54324`. Each email is
   logged in `email_log`, so a job run twice doesn't send it twice.
+- Turbopack can keep an old copy of a shared module for route handlers (PDF downloads, cron jobs). If a download
+  disagrees with the pages after a change, stop `npm run dev` (the `next` process too) and start it again.
 - `npx supabase stop` shuts it down. Changes to `supabase/config.toml` or the email template only apply after a stop and start.
 
 ## What's where
@@ -79,11 +81,14 @@ server store exchange rates), add any long random `CRON_SECRET`, then restart `n
 | `src/app/app/pagamentos/` | Payments: list and quick add, edit, and `importar` (statement import) |
 | `src/app/app/faturas/` | Invoices: what's owed, new invoice (amount from logged hours), each invoice with its payments |
 | `src/app/app/fontes/[id]` | A platform or client, and its projects (same pay, own hourly rate, or fixed price) |
+| `src/app/app/documentos/` | Documents: income statement, DECORE pack, timesheet, and `revisao` (payment review request with the math and a message to copy) |
+| `src/app/app/arquivos/` | Downloads: `comprovante` (income statement PDF), `pagamentos` (CSV for the accountant), `horas` (timesheet or review PDF), `fatura/[id]` (invoice PDF) |
+| `src/lib/documents/`, `src/i18n/documents.ts` | The PDFs (`@react-pdf/renderer`), their data, number formats per language, the messages to copy, and their text (PT/EN, chosen per document) |
 | `src/app/app/impostos/` | Taxes: the year, and each month (`2026-10`) with conversions, deductions and "paid" |
 | `src/app/app/actions.ts` | Every form in the app (server actions) |
 | `src/components/app/`, `src/i18n/app.ts` | App screens' building blocks, and all app text (PT/EN) |
 | `src/lib/app/` | Signed-in user and profile (`session.ts`), form rules (`sources.ts`, `entries.ts`, `payments.ts`), time zones (`time.ts`), statement reader (`statementImport.ts`), payments in reais for pages (`money.ts`), the Taxes screens' data and reminders (`taxes.ts`), late payments (`alerts.ts`), projects (`projects.ts`), invoices and money owed (`invoices.ts`) |
-| `src/lib/money/` | Real rate with projects and retainers (`realRate.ts`), invoice states and numbering (`invoices.ts`), money received, "possível diferença" and take-home (`received.ts`), reserves (`reserves.ts`), paydays and late payments (`paydays.ts`), conversion rules (`convert.ts`), taxes (`tax.ts`), Banco Central rates (`ptax.ts`, `rates.ts`); all with tests except the network parts |
+| `src/lib/money/` | Real rate with projects and retainers (`realRate.ts`), invoice states and numbering (`invoices.ts`), income report, timesheet rows and CSV (`reports.ts`), money received, "possível diferença" and take-home (`received.ts`), reserves (`reserves.ts`), paydays and late payments (`paydays.ts`), conversion rules (`convert.ts`), taxes (`tax.ts`), Banco Central rates (`ptax.ts`, `rates.ts`); all with tests except the network parts |
 | `src/app/api/cron/`, `vercel.json` | Daily job (17:30 UTC: rates, then reminder, late-payment and overdue-invoice emails) and weekly job (Mondays 11:00 UTC: summary) |
 | `src/lib/jobs/notifications.ts` | What the jobs send and to whom (each email once, respecting the person's email settings) |
 | `src/lib/email/`, `src/i18n/emails.ts` | Sending (Resend, or the local inbox), the email templates and their text (PT/EN) |
@@ -147,7 +152,17 @@ bought at registro.br with his CPF. The marketer gets access to accounts, never 
    3. Gabriel enters them at registro.br (domain → **DNS** → change the servers) and confirms when done. It can take a few hours to take effect.
 5. Set `NEXT_PUBLIC_SITE_URL=https://ganhometro.com.br` and redeploy. `NEXT_PUBLIC_*` values are baked in at build time.
 
-CLI alternative: `npx vercel` (first deploy, links the project) and then `npx vercel --prod`.
+**Without connecting GitHub (Vercel CLI).** The CLI uploads this folder directly:
+
+1. Create the Vercel account with **Continue with Email**, then run `npx vercel login` here and confirm the email.
+2. `npx vercel` makes a test deploy and links the project (the defaults are fine; the link is saved in `.vercel/`).
+3. Add the variables from `.env.example` in the dashboard, or with `npx vercel env add NAME production`. Leave out
+   `MAILPIT_URL` (local only).
+4. `npx vercel --prod` publishes. Run it again for every update; it sends the files on disk, committed or not, so
+   deploy from a clean, tested state.
+
+`.vercelignore` keeps `.env.local` (local secrets) and build folders out of the upload; `assets/` must stay, because
+the link preview images read its fonts.
 
 ### 4. Supabase (the app), when the app is ready to go live
 

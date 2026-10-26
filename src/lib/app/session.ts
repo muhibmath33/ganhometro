@@ -26,10 +26,13 @@ export type Profile = Pick<
   | "emergency_months"
   | "email_reminders"
   | "email_weekly"
+  | "doc_name"
+  | "doc_details"
+  | "payment_instructions"
 >;
 
 export const PROFILE_FIELDS =
-  "locale, timezone, work_type, plan, pro_until, onboarded_at, tax_mode, inss_plan, dependents, accountant_cost, salary_target, reserve_13th, reserve_vacation, emergency_pct, emergency_months, email_reminders, email_weekly";
+  "locale, timezone, work_type, plan, pro_until, onboarded_at, tax_mode, inss_plan, dependents, accountant_cost, salary_target, reserve_13th, reserve_vacation, emergency_pct, emergency_months, email_reminders, email_weekly, doc_name, doc_details, payment_instructions";
 
 // Memoized per request, so the layout and the page share one lookup.
 export const getSession = cache(async () => {

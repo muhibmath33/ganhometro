@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { signOut } from "@/app/app/actions";
-import { EmailSettingsForm, ReservesSettingsForm } from "@/components/app/MoneySettingsForms";
+import { DocSettingsForm, EmailSettingsForm, ReservesSettingsForm } from "@/components/app/MoneySettingsForms";
 import { SettingsForm } from "@/components/app/SettingsForm";
 import { TaxSettingsForm } from "@/components/app/TaxSettingsForm";
 import { Card, PageSkeleton } from "@/components/app/ui";
@@ -56,6 +56,16 @@ async function Settings() {
             emergencyPct: String(Number(profile.emergency_pct)),
             emergencyMonths: String(profile.emergency_months),
           }}
+        />
+      </Card>
+      <Card className="max-w-xl">
+        <div id="documentos" className="flex scroll-mt-24 flex-col gap-0.5">
+          <h2 className="m-0 text-[17px] font-bold">{t.settings.docsTitle}</h2>
+          <p className="m-0 text-[14px] text-ink-soft">{t.settings.docsLead}</p>
+        </div>
+        <DocSettingsForm
+          t={t}
+          values={{ name: profile.doc_name ?? "", details: profile.doc_details ?? "", payment: profile.payment_instructions ?? "" }}
         />
       </Card>
       <Card className="max-w-xl">

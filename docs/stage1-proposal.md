@@ -2,7 +2,7 @@
 
 **Status:** approved by Xinning on 27 Oct 2026, with the general design from [audience-expansion.md](audience-expansion.md).
 **Update, 27 Oct 2026:** Xinning decided to target freelancers paid in dollars from launch, not 3–6 months later. After the research in [freelancer-market.md](freelancer-market.md), their features are added below, the build order puts money and taxes first, and the plan (§9) is in sprints instead of calendar weeks. Decisions 8–12 in §11.
-**Progress:** sprints 1–5 are done (sign-in, platforms and clients, timer, time log, real-rate dashboard, payments with statement import, "possível diferença", the month's take-home, tax settings, Taxes with reminders and the PF-or-CNPJ monitor, reserves, late-payment alerts and emails), running on a local Supabase. Google sign-in waits for a Google Cloud OAuth setup.
+**Progress:** sprints 1–7 are done (sign-in, platforms and clients, timer, time log, real-rate dashboard, payments with statement import, "possível diferença", the month's take-home, tax settings, Taxes with reminders and the PF-or-CNPJ monitor, reserves, late-payment alerts and emails, projects, retainers, time without a client, invoices with money owed, and documents: income statement, DECORE pack, timesheet, review pack, invoice PDF and reminder), running on a local Supabase. Google sign-in waits for a Google Cloud OAuth setup.
 **Scope:** features 1–6 from the handoff, plus login, Free/Pro plans, card + Pix checkout, the weekly summary email, and the freelancer features (projects, retainers, invoices, time without a client, PF/CNPJ tax mode).
 **Timeline:** set by the items at the end of §9 (accounts, accountant, payment provider), not by the code.
 
@@ -171,8 +171,8 @@ Sprints of about one working session each. Every sprint is tested end to end (br
 | 4 | **Taxes:** PF carnê-leão from receipts, DARF reminders; CNPJ estimate (DAS on exports, pro-labore); PF-or-CNPJ monitor (5). Accountant review starts here. | ✅ Done (in-app reminders; email in sprint 5) |
 | 5 | **Reservas** and "pay yourself a salary"; late-payment alerts (4); Resend email (incl. DARF reminders 5 and 1 day before); weekly summary | ✅ Done |
 | 6 | Projects (hourly or fixed price), monthly retainers, time without a client; **invoices** with due dates, partial payments and money owed | ✅ Done |
-| 7 | **Documents:** income report, DECORE pack, invoice and timesheet in English, payment reminder, dispute pack (6) | Next |
-| 8 | Exchange and fee loss audit; import from Toggl and Clockify; running timer in the tab title | |
+| 7 | **Documents:** income report, DECORE pack, invoice and timesheet in English, payment reminder, dispute pack (6) | ✅ Done |
+| 8 | Exchange and fee loss audit; import from Toggl and Clockify; running timer in the tab title | Next |
 | 9 | Plans and checkout (Mercado Pago, card + Pix), webhooks, Pro limits applied everywhere | |
 | 10 | Admin area with roles and audit log; data export and account deletion; deductions; install as an app; QA on real phones | |
 

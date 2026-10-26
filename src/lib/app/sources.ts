@@ -72,6 +72,7 @@ export function parseSourceForm(form: FormData): { data: SourceInput } | { error
       pay_weekday: payWeekday,
       pay_day: payDay,
       payment_terms_days: terms,
+      billing_details: String(form.get("billing_details") ?? "").trim().slice(0, 600) || null,
     },
   };
 }

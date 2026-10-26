@@ -134,6 +134,16 @@ export function SourceFields({ t, source }: { t: AppDictionary; source?: Source 
           </label>
         )}
       </div>
+
+      {kind === "client" && (
+        <label className={fieldLabel}>
+          <span>
+            {s.billing} <span className={hint}>({t.common.optional})</span>
+          </span>
+          <textarea name="billing_details" rows={3} maxLength={600} defaultValue={source?.billing_details ?? ""} className={`${fieldInput} py-2.5`} />
+          <span className={hint}>{s.billingHint}</span>
+        </label>
+      )}
     </div>
   );
 }

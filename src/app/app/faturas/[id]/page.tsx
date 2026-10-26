@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { deleteInvoice } from "@/app/app/actions";
 import { formatDay } from "@/components/calculators/shared";
 import { ConfirmDelete } from "@/components/app/ConfirmDelete";
+import { CopyMessage } from "@/components/app/CopyMessage";
 import { InvoiceBadge } from "@/components/app/InvoiceBadge";
 import { InvoiceForm } from "@/components/app/InvoiceForm";
 import { Card, PageSkeleton } from "@/components/app/ui";
@@ -14,6 +15,7 @@ import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { currencySymbol } from "@/lib/app/sources";
 import { dayKey } from "@/lib/app/time";
 import { formatMoney } from "@/lib/calc";
+import { reminderMessages } from "@/lib/documents/messages";
 
 async function InvoiceDetail({ params }: { params: PageProps<"/app/faturas/[id]">["params"] }) {
   const { id } = await params;
@@ -29,6 +31,8 @@ async function InvoiceDetail({ params }: { params: PageProps<"/app/faturas/[id]"
     supabase.from("payments").select("id, amount, currency, received_on").eq("invoice_id", id).order("received_on"),
   ]);
   const money = (n: number) => formatMoney(currencySymbol(invoice.currency), n, locale);
+  const d = t.documents;
+  const hasPeriod = Boolean(invoice.period_start && invoice.period_end);
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
@@ -91,6 +95,63 @@ async function InvoiceDetail({ params }: { params: PageProps<"/app/faturas/[id]"
           </Link>
         )}
       </Card>
+
+      <Card>
+        <h2 className="m-0 text-[17px] font-bold">{v.pdfTitle}</h2>
+        <form method="get" action={`/app/arquivos/fatura/${invoice.id}`} className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1.5 text-[14px] font-bold text-ink">
+            {d.language}
+            <select name="lang" defaultValue="en" className="min-h-12 w-full rounded-[10px] border border-field bg-white px-3.5 font-sans text-[16px] font-medium text-ink">
+              <option value="en">{d.langs.en}</option>
+              <option value="pt">{d.langs.pt}</option>
+            </select>
+          </label>
+          {hasPeriod && (
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-[15px] font-semibold text-ink">
+              <input type="checkbox" name="horas" value="1" defaultChecked className="size-5 shrink-0 accent-brand" />
+              {v.withTimesheet}
+            </label>
+          )}
+          <button type="submit" className="min-h-12 cursor-pointer self-start rounded-[10px] border-0 bg-brand px-5 font-sans text-[15px] font-bold text-white">
+            {v.downloadPdf}
+          </button>
+        </form>
+        {!profile.doc_name && (
+          <p className="m-0 text-[13px] text-amber-ink">
+            {d.noName}{" "}
+            <Link href="/app/ajustes#documentos" className="font-bold text-amber-ink">
+              {d.fillDetails}
+            </Link>
+          </p>
+        )}
+      </Card>
+
+      {OPEN_STATES.includes(invoice.state) && (
+        <Card>
+          <div className="flex flex-col gap-1">
+            <h2 className="m-0 text-[17px] font-bold">{v.reminderTitle}</h2>
+            <p className="m-0 text-[14px] text-ink-soft">{v.reminderLead}</p>
+          </div>
+          <CopyMessage
+            key={`${invoice.id}-${invoice.balance}`}
+            messages={reminderMessages({
+              number: invoice.number,
+              client: invoice.sourceName,
+              currency: invoice.currency,
+              amount: invoice.amount,
+              paid: invoice.paid,
+              balance: invoice.balance,
+              issued: invoice.issued_on,
+              due: invoice.due_on,
+              overdue: invoice.state === "overdue",
+              name: profile.doc_name,
+            })}
+            initial="en"
+            labels={{ langs: d.langs, copy: d.copy, copied: d.copied, language: d.language }}
+            rows={12}
+          />
+        </Card>
+      )}
 
       <ConfirmDelete
         action={deleteInvoice}
