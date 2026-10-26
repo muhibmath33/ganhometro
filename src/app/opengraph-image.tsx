@@ -1,11 +1,19 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
-export const alt = "Ganho Real — quanto cada plataforma paga de verdade, por hora, em reais";
+export const alt = "Ganhômetro — quanto cada plataforma paga de verdade, por hora, em reais";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
+// Read at module level (as in the Next.js docs) so the image stays prerendered at build time.
+const [semibold, extrabold] = await Promise.all([
+  readFile(join(process.cwd(), "assets/fonts/plus-jakarta-sans-latin-600.woff")),
+  readFile(join(process.cwd(), "assets/fonts/plus-jakarta-sans-latin-800.woff")),
+]);
+
 // Link preview for WhatsApp, Instagram and other social apps.
-export default function OpengraphImage() {
+export default async function OpengraphImage() {
   return new ImageResponse(
     (
       <div
@@ -18,6 +26,7 @@ export default function OpengraphImage() {
           padding: "72px 80px",
           background: "#F6F4EE",
           color: "#13201B",
+          fontFamily: "Plus Jakarta Sans",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
@@ -38,16 +47,22 @@ export default function OpengraphImage() {
               <path d="M9 2h6" />
             </svg>
           </div>
-          <div style={{ fontSize: 40, fontWeight: 800 }}>Ganho Real</div>
+          <div style={{ fontSize: 40, fontWeight: 800 }}>Ganhômetro</div>
         </div>
         <div style={{ fontSize: 68, fontWeight: 800, lineHeight: 1.08, letterSpacing: "-0.02em" }}>
           Descubra quanto cada plataforma paga de verdade, por hora, em reais.
         </div>
-        <div style={{ display: "flex", fontSize: 30, color: "#0B6B4F", fontWeight: 700 }}>
+        <div style={{ display: "flex", fontSize: 30, color: "#0B6B4F", fontWeight: 600 }}>
           Para quem treina IA · Acesso antecipado grátis
         </div>
       </div>
     ),
-    size,
+    {
+      ...size,
+      fonts: [
+        { name: "Plus Jakarta Sans", data: semibold, weight: 600, style: "normal" },
+        { name: "Plus Jakarta Sans", data: extrabold, weight: 800, style: "normal" },
+      ],
+    },
   );
 }

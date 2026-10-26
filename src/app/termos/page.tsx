@@ -4,21 +4,21 @@ import { LegalPage } from "@/components/LegalPage";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Termos de Uso — Ganho Real",
-  description: "Termos de uso do site e da lista de acesso antecipado do Ganho Real.",
+  title: "Termos de Uso — Ganhômetro",
+  description: "Termos de uso do site e da lista de acesso antecipado do Ganhômetro.",
 };
 
 export default function TermsPage() {
   return (
     <LegalPage title="Termos de Uso">
       <p>
-        Estes termos valem para o site do Ganho Real e para a lista de acesso
+        Estes termos valem para o site do Ganhômetro e para a lista de acesso
         antecipado. Ao usar o site, você concorda com eles.
       </p>
 
       <h2>1. O que é este site</h2>
       <p>
-        Este site apresenta o Ganho Real, um aplicativo em desenvolvimento para medir
+        Este site apresenta o Ganhômetro, um aplicativo em desenvolvimento para medir
         quanto cada plataforma paga por hora de verdade, e permite entrar na lista de
         acesso antecipado.
       </p>
@@ -43,7 +43,7 @@ export default function TermsPage() {
 
       <h2>4. Independência</h2>
       <p>
-        O Ganho Real não é ligado a nenhuma plataforma de treinamento de IA ou de
+        O Ganhômetro não é ligado a nenhuma plataforma de treinamento de IA ou de
         freelance, nem à Receita Federal. Os nomes das plataformas citadas pertencem
         aos seus donos e aparecem só para identificar o público a quem o produto se
         destina.
@@ -63,7 +63,7 @@ export default function TermsPage() {
 
       <h2>7. Propriedade intelectual</h2>
       <p>
-        A marca, os textos e o design do Ganho Real são protegidos. Não os copie sem
+        A marca, os textos e o design do Ganhômetro são protegidos. Não os copie sem
         autorização.
       </p>
 

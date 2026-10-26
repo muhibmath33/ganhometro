@@ -1,10 +1,10 @@
-"""Builds "Carnê-leão 2026 para quem recebe em dólar", the Ganho Real signup bonus.
+"""Builds "Carnê-leão 2026 para quem recebe em dólar", the Ganhômetro signup bonus.
 
-    python bonus/build_carne_leao.py                  -> public/Carne-leao-2026-Ganho-Real.xlsx
+    python bonus/build_carne_leao.py                  -> public/Carne-leao-2026-Ganhometro.xlsx
     python bonus/build_carne_leao.py --update-rates   -> refresh bonus/ptax.json from the BCB first
     python bonus/verify_carne_leao.py                 -> checks every formula (see that file)
 
-Rules follow the Ganho Real handoff (section 5). Formulas stay live in the workbook; the
+Rules follow the Ganhômetro handoff (section 5). Formulas stay live in the workbook; the
 Python model below only supplies the cached values (so previews show numbers) and the
 expected results for the verification script.
 """
@@ -19,7 +19,7 @@ from pathlib import Path
 import xlsxwriter
 
 HERE = Path(__file__).parent
-OUT = HERE.parent / "public" / "Carne-leao-2026-Ganho-Real.xlsx"
+OUT = HERE.parent / "public" / "Carne-leao-2026-Ganhometro.xlsx"
 PTAX_FILE = HERE / "ptax.json"  # BCB PTAX daily rates, plus the date they were downloaded
 
 YEAR = 2026
@@ -195,7 +195,7 @@ def build(path=OUT, payments=(), deductions=None, rates=None):
     wb.formats[0].set_font_name("Arial")
     wb.set_calc_mode("auto")
     wb.set_properties({"title": "Carnê-leão 2026 para quem recebe em dólar",
-                       "author": "Ganho Real", "comments": "Estimativa. Não é orientação contábil."})
+                       "author": "Ganhômetro", "comments": "Estimativa. Não é orientação contábil."})
 
     INK, GREEN, GREEN_TINT, LINE = "#13201B", "#0B6B4F", "#E2F1EA", "#E4E0D5"
     AMBER_TINT, AMBER_INK, MUTED, INPUT = "#FDF1E3", "#7A3A06", "#5C6762", "#FFF2CC"
@@ -277,7 +277,7 @@ def build(path=OUT, payments=(), deductions=None, rates=None):
     setup(ws, GREEN)
     ws.set_column("B:B", 135)
     ws.write("B2", "Carnê-leão 2026 para quem recebe em dólar", big_title)
-    ws.write("B3", "Planilha gratuita do Ganho Real. Lance seus pagamentos em dólar e veja o "
+    ws.write("B3", "Planilha gratuita do Ganhômetro. Lance seus pagamentos em dólar e veja o "
                    "imposto estimado de cada mês, com as regras de 2026.", sub)
     lines = [
         ("B5", "Como usar", section),
@@ -318,7 +318,7 @@ def build(path=OUT, payments=(), deductions=None, rates=None):
                 "Cotações mostra onde consultar.", text),
         ("B31", "Estimativa baseada nas regras publicadas para 2026. Não é orientação contábil. "
                 "Em caso de dúvida, consulte um contador.", disclaimer),
-        ("B33", "Feito pelo Ganho Real: descubra quanto cada plataforma paga de verdade, por hora, "
+        ("B33", "Feito pelo Ganhômetro: descubra quanto cada plataforma paga de verdade, por hora, "
                 "em reais.", brand),
         ("B34", f"Cotações do Banco Central consultadas em {consulted}.", note),
     ]

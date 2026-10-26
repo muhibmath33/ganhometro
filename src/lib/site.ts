@@ -1,9 +1,9 @@
-// Site-wide settings. Values that are still pending from Victor fall back to a
+// Site-wide settings. Values that are still pending from Xinning fall back to a
 // visible placeholder so they are easy to spot before launch (see README).
 
 export const site = {
-  name: "Ganho Real",
-  title: "Ganho Real — quanto cada plataforma paga de verdade",
+  name: "Ganhômetro",
+  title: "Ganhômetro — quanto cada plataforma paga de verdade",
   description:
     "Conte o tempo pago e o não pago (diretrizes, testes, espera), veja seu ganho real por hora em reais e saiba quando um pagamento atrasou. Com estimativa do carnê-leão incluída.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
@@ -15,7 +15,7 @@ export const site = {
   // NEXT_PUBLIC_BONUS_READY=true (after the accountant review, see README).
   bonus: {
     ready: process.env.NEXT_PUBLIC_BONUS_READY === "true",
-    href: "/Carne-leao-2026-Ganho-Real.xlsx",
+    href: "/Carne-leao-2026-Ganhometro.xlsx",
     label: "Baixe a planilha grátis: Carnê-leão 2026 para quem recebe em dólar",
   },
 };

@@ -117,7 +117,7 @@ export function WaitlistForm({ source, buttonLabel, successText, centered = fals
           className="mt-px size-4 shrink-0 cursor-pointer accent-brand"
         />
         <span>
-          Aceito receber e-mails do Ganho Real sobre o acesso antecipado e a oferta de
+          Aceito receber e-mails do Ganhômetro sobre o acesso antecipado e a oferta de
           fundador. Li a <Link href="/privacidade" className="underline">Política de Privacidade</Link> e
           posso cancelar quando quiser.
         </span>

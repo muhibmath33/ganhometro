@@ -22,7 +22,7 @@ export function SiteHeader({ home = false }: { home?: boolean }) {
             <LogoIcon size={18} color="#FFFFFF" strokeWidth={2.2} />
           </span>
           <span className="text-[19px] font-extrabold tracking-[-0.01em]">
-            Ganho Real
+            Ganhômetro
           </span>
         </a>
         <nav aria-label="Principal" className="flex flex-wrap items-center gap-1">

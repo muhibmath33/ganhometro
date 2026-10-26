@@ -14,7 +14,7 @@ export const features = [
 ];
 
 export const faqs = [
-  { q: "O Ganho Real é ligado a alguma plataforma?", a: "Não. É independente e não tem relação com nenhuma plataforma de treinamento de IA ou de freelance. Você registra seu próprio tempo e seus pagamentos." },
+  { q: "O Ganhômetro é ligado a alguma plataforma?", a: "Não. É independente e não tem relação com nenhuma plataforma de treinamento de IA ou de freelance. Você registra seu próprio tempo e seus pagamentos." },
   { q: "Vocês acessam minha conta ou minhas tarefas?", a: "Não. Guardamos apenas o tempo que você registra e os pagamentos que você informa. Nunca pedimos login das plataformas." },
   { q: "A extensão é permitida pelas plataformas?", a: "Ela apenas mede o tempo e identifica qual site está aberto. Não clica, não atualiza páginas e não lê tarefas. Mesmo assim, confira os termos de cada plataforma." },
   { q: "Funciona com quais plataformas?", a: "Com qualquer uma. Você adiciona as plataformas que usa, com o valor anunciado e o dia de pagamento." },

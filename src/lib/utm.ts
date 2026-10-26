@@ -11,7 +11,7 @@ export const UTM_KEYS = [
 
 export type Utm = Partial<Record<(typeof UTM_KEYS)[number], string>>;
 
-const STORAGE_KEY = "gr_utm";
+const STORAGE_KEY = "gm_utm";
 
 function fromSearch(search: string): Utm {
   const params = new URLSearchParams(search);

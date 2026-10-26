@@ -3,8 +3,8 @@ import { LegalPage } from "@/components/LegalPage";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Política de Privacidade — Ganho Real",
-  description: "Como o Ganho Real trata seus dados pessoais, conforme a LGPD.",
+  title: "Política de Privacidade — Ganhômetro",
+  description: "Como o Ganhômetro trata seus dados pessoais, conforme a LGPD.",
 };
 
 export default function PrivacyPage() {
@@ -12,7 +12,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Política de Privacidade">
       <p>
-        Esta política explica como o Ganho Real trata os seus dados pessoais neste site
+        Esta política explica como o Ganhômetro trata os seus dados pessoais neste site
         e na lista de acesso antecipado, de acordo com a Lei Geral de Proteção de Dados
         (Lei nº 13.709/2018, a “LGPD”).
       </p>
@@ -58,7 +58,7 @@ export default function PrivacyPage() {
       <ul>
         <li>
           Enviar e-mails sobre o acesso antecipado, o lançamento, a oferta de fundador e
-          materiais gratuitos ligados ao Ganho Real.
+          materiais gratuitos ligados ao Ganhômetro.
         </li>
         <li>Entender quais canais de divulgação funcionam, com dados agregados.</li>
         <li>Proteger o site contra abuso e spam.</li>
@@ -98,8 +98,9 @@ export default function PrivacyPage() {
       <h2>6. Transferência internacional</h2>
       <p>
         Esses fornecedores podem tratar dados fora do Brasil, na União Europeia e nos
-        Estados Unidos. Nesses casos, a transferência segue o art. 33 da LGPD, com
-        fornecedores que adotam cláusulas contratuais e medidas de segurança adequadas.
+        Estados Unidos. Parte da equipe que opera o Ganhômetro trabalha na China e pode
+        acessar os dados de lá. Nesses casos, a transferência segue o art. 33 da LGPD,
+        com cláusulas contratuais, acesso restrito e medidas de segurança adequadas.
       </p>
 
       <h2>7. Por quanto tempo guardamos</h2>
@@ -139,7 +140,7 @@ export default function PrivacyPage() {
       <h2>10. Menores de idade</h2>
       <p>Este site e a lista de acesso antecipado são destinados a maiores de 18 anos.</p>
 
-      <h2>11. O aplicativo Ganho Real</h2>
+      <h2>11. O aplicativo Ganhômetro</h2>
       <p>
         Quando o aplicativo for lançado, ele terá uma política própria, com a mesma
         regra: guardamos só tempo e dinheiro, nunca o conteúdo das suas tarefas.

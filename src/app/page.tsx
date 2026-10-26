@@ -116,6 +116,10 @@ export default function Home() {
             <span className="text-[13px] text-muted">
               Grátis no acesso antecipado. Nunca guardamos o conteúdo das suas tarefas.
             </span>
+            <span className="text-[14px] text-ink-soft">
+              Também serve para freelancers que recebem em dólar, como devs, designers e
+              tradutores.
+            </span>
           </div>
 
           <div className="flex min-w-0 flex-[1_1_380px] flex-col gap-4 rounded-[18px] border border-line bg-white p-[22px] shadow-[0_12px_32px_rgba(19,32,27,0.08)]">
@@ -246,7 +250,7 @@ export default function Home() {
                 E o carnê-leão? Já está incluído.
               </h2>
               <p className="m-0 text-[16px] leading-[1.6] text-ink-soft">
-                Como você já registra seus pagamentos, o Ganho Real converte cada um
+                Como você já registra seus pagamentos, o Ganhômetro converte cada um
                 para reais pela regra oficial da Receita, mostra a estimativa do mês com
                 as regras de 2026 e lembra você antes do prazo.
               </p>
@@ -274,7 +278,7 @@ export default function Home() {
                 Só tempo e dinheiro. Nunca suas tarefas.
               </h2>
               <p className="m-0 text-[16px] leading-[1.6] text-night-text">
-                Trabalho de treinamento de IA costuma ser confidencial. O Ganho Real foi
+                Trabalho de treinamento de IA costuma ser confidencial. O Ganhômetro foi
                 feito para você nunca precisar compartilhá-lo.
               </p>
             </div>
