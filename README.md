@@ -1,9 +1,12 @@
-# Ganhômetro — landing page
+# Ganhômetro
 
 The waitlist site for Ganhômetro, in Brazilian Portuguese (`/`) and English (`/en`), with a PT/EN switch in the navbar.
 Next.js 16 (App Router) + Tailwind CSS 4, deployed on Vercel.
 Signups go to a Brevo list, and analytics use Umami Cloud (free, no cookies).
 There's also a second landing page for freelancers paid in dollars at `/freelancers` (and `/en/freelancers`), used to test that audience before launch.
+
+The app itself lives under `/app` and is being built week by week, following `docs/stage1-proposal.md`.
+It uses Supabase (Postgres + sign-in by emailed code). Done so far: sign-in, onboarding, platforms and clients (with the Free plan's limit of 2), settings.
 
 ## Run locally
 
@@ -17,6 +20,23 @@ Without Brevo keys, the form still works locally. The signup is printed in the t
 In production, a missing key makes the form show an error, so a misconfigured deploy can't silently lose signups.
 
 Checks: `npm run lint` and `npm run build`.
+
+### The app (`/app`) locally
+
+The app needs a local Supabase, which runs in Docker (install Docker Desktop first):
+
+```bash
+npx supabase start    # first run downloads the images; applies supabase/migrations
+```
+
+It prints an **API URL** and a **Publishable key**. Put them in `.env.local` as
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, then restart `npm run dev`.
+
+- Sign-in emails don't leave your computer. Open the local inbox at http://127.0.0.1:54324 to read the code.
+- `npx supabase db reset` wipes the local database and re-applies the migrations.
+- After changing a migration, regenerate the types:
+  `npx supabase gen types typescript --local > src/lib/supabase/database.types.ts`.
+- `npx supabase stop` shuts it down. Changes to `supabase/config.toml` or the email template only apply after a stop and start.
 
 ## What's where
 
@@ -35,6 +55,13 @@ Checks: `npm run lint` and `npm run build`.
 | `src/app/opengraph-image.tsx` | Link preview image for WhatsApp, Instagram and others |
 | `bonus/` | Scripts that build and verify the carnê-leão spreadsheet, the PDF guide (`build_guide.py`), and the BCB rates (`ptax.json`) |
 | `src/app/admin`, `src/components/admin`, `src/lib/admin` | Private waitlist dashboard and CSV export |
+| `src/app/app/` | The app: `entrar` (sign in), `boas-vindas` (onboarding), `fontes` (platforms and clients), `ajustes` (settings), `auth/confirm` (email link) |
+| `src/app/app/actions.ts` | Every form in the app (server actions) |
+| `src/components/app/`, `src/i18n/app.ts` | App screens' building blocks, and all app text (PT/EN) |
+| `src/lib/app/` | Signed-in user and profile (`session.ts`), platform/client form rules (`sources.ts`) |
+| `src/lib/supabase/`, `src/proxy.ts` | Supabase client, generated database types, session refresh for `/app` |
+| `supabase/migrations/` | Database tables, security rules (each user sees only their own rows) and the Free plan limit |
+| `supabase/templates/magic_link.html` | The sign-in email (PT/EN), with the 6-digit code and a link |
 | `docs/stage1-proposal.md` | Stage 1 app plan (screens, data model, architecture), approved 27 Oct 2026 |
 | `docs/partnership-checklist.md` | What Xinning and Gabriel should agree in writing, plus questions for the accountant and lawyer |
 | `docs/success-and-competition.md` | Competitors in Brazil, odds of success, unit economics, risks and signals to watch |
@@ -88,6 +115,24 @@ bought at registro.br with his CPF. The marketer gets access to accounts, never 
 5. Set `NEXT_PUBLIC_SITE_URL=https://ganhometro.com.br` and redeploy. `NEXT_PUBLIC_*` values are baked in at build time.
 
 CLI alternative: `npx vercel` (first deploy, links the project) and then `npx vercel --prod`.
+
+### 4. Supabase (the app), when the app is ready to go live
+
+Not needed for the waitlist. Xinning owns the account.
+
+1. At **supabase.com**, create a project in the **São Paulo** region. Save the database password somewhere safe.
+2. Send the database tables up: `npx supabase link --project-ref <project ref>`, then `npx supabase db push`.
+3. **Authentication → URL Configuration:** Site URL `https://ganhometro.com.br`. Add the redirect URL
+   `https://ganhometro.com.br/app/auth/confirm`.
+4. **Authentication → Emails → Templates:** for both **Magic link** and **Confirm signup**, paste the contents of
+   `supabase/templates/magic_link.html` and use the subject `Ganhômetro: seu código de acesso / your sign-in code`.
+5. **Sign-in emails need your own sender.** Supabase's built-in email only reaches your own team and a few per hour.
+   1. Create a **Resend** account and verify the domain `ganhometro.com.br` (it gives DNS records to add in Vercel → Domains).
+   2. In Supabase, **Authentication → Emails → SMTP Settings:** host `smtp.resend.com`, port `465`, user `resend`,
+      password = a Resend API key, sender `nao-responda@ganhometro.com.br`, name `Ganhômetro`.
+   3. **Authentication → Rate Limits:** raise "emails sent per hour" (for example to 100).
+6. Copy the **Project URL** and **Publishable key** (Project Settings → API) into Vercel as
+   `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, then redeploy.
 
 ## Admin page (`/admin`)
 

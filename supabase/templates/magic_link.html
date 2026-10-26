@@ -1,0 +1,17 @@
+<!-- Login email (Supabase Auth). Used for both new and returning users.
+     Production: paste the same HTML in Supabase → Authentication → Emails (Magic Link and Confirm signup). -->
+{{ if eq .Data.locale "en" }}
+<h2 style="font-family:Arial,sans-serif;color:#13201B">Your Ganhômetro sign-in code</h2>
+<p style="font-family:Arial,sans-serif;color:#3E4A45;font-size:15px">Enter this code in the app:</p>
+<p style="font-family:Courier New,monospace;font-size:32px;letter-spacing:6px;color:#0B6B4F;font-weight:bold">{{ .Token }}</p>
+<p style="font-family:Arial,sans-serif;color:#3E4A45;font-size:15px">Or tap the button on the device where you want to sign in:</p>
+<p><a href="{{ .SiteURL }}/app/auth/confirm?token_hash={{ .TokenHash }}&type=email" style="display:inline-block;background:#0B6B4F;color:#FFFFFF;padding:12px 20px;border-radius:10px;font-family:Arial,sans-serif;font-weight:bold;text-decoration:none">Sign in to Ganhômetro</a></p>
+<p style="font-family:Arial,sans-serif;color:#5C6762;font-size:13px">The code expires in 1 hour. If you didn't ask for it, just ignore this email.</p>
+{{ else }}
+<h2 style="font-family:Arial,sans-serif;color:#13201B">Seu código de acesso ao Ganhômetro</h2>
+<p style="font-family:Arial,sans-serif;color:#3E4A45;font-size:15px">Digite este código no app:</p>
+<p style="font-family:Courier New,monospace;font-size:32px;letter-spacing:6px;color:#0B6B4F;font-weight:bold">{{ .Token }}</p>
+<p style="font-family:Arial,sans-serif;color:#3E4A45;font-size:15px">Ou toque no botão no aparelho em que você quer entrar:</p>
+<p><a href="{{ .SiteURL }}/app/auth/confirm?token_hash={{ .TokenHash }}&type=email" style="display:inline-block;background:#0B6B4F;color:#FFFFFF;padding:12px 20px;border-radius:10px;font-family:Arial,sans-serif;font-weight:bold;text-decoration:none">Entrar no Ganhômetro</a></p>
+<p style="font-family:Arial,sans-serif;color:#5C6762;font-size:13px">O código vale por 1 hora. Se não foi você que pediu, é só ignorar este e-mail.</p>
+{{ end }}
