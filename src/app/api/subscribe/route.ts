@@ -68,8 +68,11 @@ export async function POST(request: Request) {
     return reply(500, { ok: false, code: "generic" });
   }
 
-  // Double opt-in is used when a Brevo confirmation template is configured.
-  const doiTemplateId = Number(process.env.BREVO_DOI_TEMPLATE_ID);
+  // Double opt-in is used when a Brevo confirmation template is configured. English signups
+  // get the English template when one is set, otherwise the Portuguese one.
+  const doiTemplateId = Number(
+    (locale === "en" && process.env.BREVO_DOI_TEMPLATE_ID_EN) || process.env.BREVO_DOI_TEMPLATE_ID,
+  );
   const doiRedirect = process.env.BREVO_DOI_REDIRECT_URL;
   const doubleOptIn = Boolean(doiTemplateId && doiRedirect);
 

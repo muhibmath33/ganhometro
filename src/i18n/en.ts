@@ -170,6 +170,7 @@ const en: Dictionary = {
     honeypot: "Leave this field empty",
     doubleOptIn: "Almost there! Confirm your signup in the email we just sent.",
     bonus: "Download the free spreadsheet: Carnê-leão 2026 for people paid in dollars (in Portuguese)",
+    bonusGuide: "Download the quick guide (PDF, in Portuguese)",
     errors: {
       invalid_email: "Enter a valid email address.",
       consent_required: "Tick the consent box to join the waitlist.",

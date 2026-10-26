@@ -51,7 +51,8 @@ bought at registro.br with his CPF. The marketer gets access to accounts, never 
    If they are missing, the route still saves the email, but without this data.
 4. Recommended: turn on double opt-in. Create a "double opt-in" template in Brevo, then set
    `BREVO_DOI_TEMPLATE_ID` and `BREVO_DOI_REDIRECT_URL` (for example `https://ganhometro.com.br/?confirmado=1`).
-   The thank-you message then asks people to confirm by email.
+   For English signups, also set `BREVO_DOI_TEMPLATE_ID_EN`. The thank-you message then asks people to confirm by email.
+   Ready-to-paste email texts (PT and EN) and the automation steps are in `docs/emails/brevo-emails.md`.
 5. Authenticate the sending domain in Brevo (SPF/DKIM/DMARC), so emails don't land in spam.
 
 ### 2. Plausible

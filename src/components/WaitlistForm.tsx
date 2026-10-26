@@ -63,17 +63,22 @@ export function WaitlistForm({ source, locale, t, buttonLabel, successText, cent
           <CheckIcon strokeWidth={2.4} className="shrink-0" />
           {doubleOptIn ? t.doubleOptIn : successText}
         </div>
-        {site.bonus.ready && (
-          <a
-            href={site.bonus.href}
-            download
-            onClick={() => track("Bonus download", { source, locale })}
-            className="flex min-h-12 items-center gap-2.5 rounded-[10px] border border-brand bg-white px-4 py-2.5 text-left text-[15px] font-bold text-brand no-underline"
-          >
-            <DownloadIcon strokeWidth={2.2} className="shrink-0" />
-            {t.bonus}
-          </a>
-        )}
+        {site.bonus.ready &&
+          [
+            { href: site.bonus.href, label: t.bonus, file: "spreadsheet" },
+            { href: site.bonus.guideHref, label: t.bonusGuide, file: "guide" },
+          ].map((b) => (
+            <a
+              key={b.file}
+              href={b.href}
+              download
+              onClick={() => track("Bonus download", { source, locale, file: b.file })}
+              className="flex min-h-12 items-center gap-2.5 rounded-[10px] border border-brand bg-white px-4 py-2.5 text-left text-[15px] font-bold text-brand no-underline"
+            >
+              <DownloadIcon strokeWidth={2.2} className="shrink-0" />
+              {b.label}
+            </a>
+          ))}
       </div>
     );
   }

@@ -170,6 +170,7 @@ const pt = {
     honeypot: "Não preencha este campo",
     doubleOptIn: "Quase lá! Confirme sua inscrição no e-mail que acabamos de enviar.",
     bonus: "Baixe a planilha grátis: Carnê-leão 2026 para quem recebe em dólar",
+    bonusGuide: "Baixe o guia rápido (PDF)",
     errors: {
       invalid_email: "Digite um e-mail válido.",
       consent_required: "Marque a caixa de consentimento para entrar na lista.",

@@ -13,5 +13,6 @@ export const site = {
   bonus: {
     ready: process.env.NEXT_PUBLIC_BONUS_READY === "true",
     href: "/Carne-leao-2026-Ganhometro.xlsx",
+    guideHref: "/Guia-Carne-leao-2026-Ganhometro.pdf",
   },
 };
