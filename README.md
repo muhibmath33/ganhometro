@@ -10,7 +10,9 @@ The app itself lives under `/app` and is being built week by week, following `do
 It uses Supabase (Postgres + sign-in by emailed code). Done so far: sign-in, onboarding, platforms and clients (with the Free plan's limit of 2), settings,
 the timer (paid/unpaid, categories), the time log with manual entries, the dashboard with the real hourly rate,
 payments (quick add, or import a Wise, Payoneer or Upwork CSV statement), "possível diferença" on short payments,
-the month's take-home ("Quanto sobra") as an individual or a company, and the tax settings.
+the month's take-home ("Quanto sobra") as an individual or a company, the tax settings, and Taxes: the carnê-leão
+month by month (or the company's DAS), each payment's conversion, deductions, "paid", reminders, the R$ 5 mil warning
+and the PF-or-CNPJ comparison over the last 12 months.
 
 ## Run locally
 
@@ -70,9 +72,10 @@ server store exchange rates), add any long random `CRON_SECRET`, then restart `n
 | `src/app/admin`, `src/components/admin`, `src/lib/admin` | Private waitlist dashboard and CSV export |
 | `src/app/app/` | The app: `page.tsx` (Today, with the timer), `painel` (dashboard), `registro` (time log), `fontes` (platforms and clients), `ajustes` (settings), `entrar` (sign in), `boas-vindas` (onboarding), `auth/confirm` (email link) |
 | `src/app/app/pagamentos/` | Payments: list and quick add, edit, and `importar` (statement import) |
+| `src/app/app/impostos/` | Taxes: the year, and each month (`2026-10`) with conversions, deductions and "paid" |
 | `src/app/app/actions.ts` | Every form in the app (server actions) |
 | `src/components/app/`, `src/i18n/app.ts` | App screens' building blocks, and all app text (PT/EN) |
-| `src/lib/app/` | Signed-in user and profile (`session.ts`), form rules (`sources.ts`, `entries.ts`, `payments.ts`), time zones (`time.ts`), statement reader (`statementImport.ts`), payments in reais for pages (`money.ts`) |
+| `src/lib/app/` | Signed-in user and profile (`session.ts`), form rules (`sources.ts`, `entries.ts`, `payments.ts`), time zones (`time.ts`), statement reader (`statementImport.ts`), payments in reais for pages (`money.ts`), the Taxes screens' data and reminders (`taxes.ts`) |
 | `src/lib/money/` | Real rate (`realRate.ts`), money received, "possível diferença" and take-home (`received.ts`), conversion rules (`convert.ts`), taxes (`tax.ts`), Banco Central rates (`ptax.ts`, `rates.ts`); all with tests except the network parts |
 | `src/app/api/cron/daily`, `vercel.json` | Daily job (weekdays, 17:30 UTC) that stores the latest PTAX rates |
 | `src/lib/supabase/admin.ts` | Server-only client with the secret key, for the shared rates table |
@@ -200,7 +203,7 @@ Rules and rates live at the top of `build_carne_leao.py`, which makes a 2027 ver
 - [ ] Set up forwarding for `contato@ganhometro.com.br` (the default contact email), or set `NEXT_PUBLIC_CONTACT_EMAIL` to another address.
 - [ ] Set `NEXT_PUBLIC_CONTROLLER_NAME` (the data controller named in the privacy policy). Until then the page shows `[NOME DO RESPONSÁVEL]`.
 - [ ] Have a lawyer review `/privacidade` and `/termos`. They are a solid draft, not legal advice.
-- [ ] The FAQ says the carnê-leão estimate is "revisada por um contador antes do lançamento". Make sure that happens, and that the review covers the calculators and the app's take-home (`src/lib/money/tax.ts`, `convert.ts`, `received.ts`): carnê-leão, INSS, Simples Nacional on export revenue, the PF vs. CNPJ comparison, tax on the amount before the platform's commission and fees, and euros/pounds converted to dollars at the day's parity first.
+- [ ] The FAQ says the carnê-leão estimate is "revisada por um contador antes do lançamento". Make sure that happens, and that the review covers the calculators and the app's take-home (`src/lib/money/tax.ts`, `convert.ts`, `received.ts`): carnê-leão, INSS, Simples Nacional on export revenue, the PF vs. CNPJ comparison, tax on the amount before the platform's commission and fees, euros/pounds converted to dollars at the day's parity first, the DAS due on the 20th (next business day when it isn't one), the self-employed INSS on the 15th, and the company comparison using the real RBT12.
 - [ ] Submit a real signup on the live site and confirm it lands in the Brevo list with the attributes filled.
 - [ ] Open the live URL with `?utm_source=teste&utm_campaign=teste`, sign up, and check the UTM attributes in Brevo.
 - [ ] Share the URL on WhatsApp and check the preview image.

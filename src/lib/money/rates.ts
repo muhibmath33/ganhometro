@@ -26,15 +26,23 @@ export async function loadRates(
   const today = new Date().toISOString().slice(0, 10);
   const end = to < today ? to : today;
 
-  const { data } = await supabase
-    .from("ptax_rates")
-    .select("currency, day, buy, usd_parity")
-    .in("currency", wanted)
-    .gte("day", start)
-    .lte("day", end)
-    .order("day");
+  // The API returns at most 1000 rows per request; two years of three currencies is more, so read in pages.
+  const data: { currency: string; day: string; buy: number; usd_parity: number }[] = [];
+  for (let page = 0; ; page++) {
+    const { data: rows } = await supabase
+      .from("ptax_rates")
+      .select("currency, day, buy, usd_parity")
+      .in("currency", wanted)
+      .gte("day", start)
+      .lte("day", end)
+      .order("day")
+      .order("currency")
+      .range(page * 1000, page * 1000 + 999);
+    data.push(...(rows ?? []));
+    if (!rows || rows.length < 1000) break;
+  }
   const book: RateBook = {};
-  for (const row of data ?? []) {
+  for (const row of data) {
     const c = row.currency as RateCurrency;
     (book[c] ??= []).push({ day: row.day, buy: Number(row.buy), parity: Number(row.usd_parity) });
   }
@@ -46,7 +54,8 @@ export async function loadRates(
   if (stale.length) {
     const fetched: PtaxRow[] = (await Promise.all(stale.map((c) => fetchPtaxRange(c, start, end).catch(() => [])))).flat();
     if (fetched.length) {
-      await adminClient()?.from("ptax_rates").upsert(fetched, { onConflict: "currency,day" });
+      const result = await adminClient()?.from("ptax_rates").upsert(fetched, { onConflict: "currency,day" });
+      if (result?.error) console.error("[rates] couldn't store PTAX rates:", result.error.message);
       for (const c of stale) {
         const rows = fetched.filter((r) => r.currency === c).map((r) => ({ day: r.day, buy: r.buy, parity: r.usd_parity }));
         if (rows.length) book[c] = rows.sort((a, b) => a.day.localeCompare(b.day));

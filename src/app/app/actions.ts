@@ -361,6 +361,61 @@ export async function importPayments(_prev: { error?: "generic" | "source" } | n
   redirect(`/app/pagamentos?importados=${data?.length ?? 0}&existentes=${inserts.length - (data?.length ?? 0)}`);
 }
 
+// --- Taxes ---------------------------------------------------------------------------
+
+const monthKey = (form: FormData) => {
+  const month = String(form.get("month") ?? "");
+  return /^\d{4}-\d{2}$/.test(month) && isDay(`${month}-01`) ? month : null;
+};
+
+// The person's actual deductions for a month. Empty fields fall back to the estimate from Settings.
+export async function saveTaxMonth(_prev: FormState, form: FormData): Promise<FormState> {
+  const { supabase } = await requireUser();
+  const month = monthKey(form);
+  const optional = (name: string) => {
+    const text = String(form.get(name) ?? "").trim();
+    return text === "" ? null : parseNumber(text);
+  };
+  const inss = optional("inss_paid");
+  const dependents = optional("dependents");
+  const alimony = optional("alimony") ?? 0;
+  const other = optional("other_deductions") ?? 0;
+  const valid = (n: number | null, max: number) => n === null || (n >= 0 && n <= max);
+  if (!month || !valid(inss, 100_000) || !valid(dependents, 20) || !valid(alimony, 1_000_000) || !valid(other, 1_000_000)) {
+    return { error: "generic" };
+  }
+  const { error } = await supabase.from("tax_months").upsert(
+    {
+      month: `${month}-01`,
+      inss_paid: inss,
+      dependents: dependents === null ? null : Math.floor(dependents),
+      alimony,
+      other_deductions: other,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,month" },
+  );
+  if (error) return { error: "generic" };
+  revalidatePath("/app", "layout");
+  return { ok: true };
+}
+
+// Mark a month's DARF (or DAS) as paid today, or undo it.
+export async function setTaxPaid(form: FormData) {
+  const { supabase, profile } = await requireUser();
+  const month = monthKey(form);
+  if (!month) return;
+  await supabase.from("tax_months").upsert(
+    {
+      month: `${month}-01`,
+      paid_on: form.get("paid") === "1" ? dayKey(new Date(), profile.timezone) : null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,month" },
+  );
+  revalidatePath("/app", "layout");
+}
+
 // --- Settings ------------------------------------------------------------------------
 
 export async function saveTaxSettings(_prev: FormState, form: FormData): Promise<FormState> {

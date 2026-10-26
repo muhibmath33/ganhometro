@@ -69,13 +69,19 @@ export async function fetchPtaxRange(currency: "USD" | "EUR" | "GBP", from: stri
   if (!res.ok) throw new Error(`PTAX ${currency} range: HTTP ${res.status}`);
   const rows: { cotacaoCompra: number; cotacaoVenda: number; dataHoraCotacao: string; paridadeCompra?: number }[] =
     (await res.json()).value ?? [];
-  return rows.map((r) => ({
-    currency,
-    day: String(r.dataHoraCotacao).slice(0, 10),
-    buy: Number(r.cotacaoCompra),
-    sell: Number(r.cotacaoVenda),
-    usd_parity: currency === "USD" ? 1 : Number(r.paridadeCompra ?? 0) || 1,
-  }));
+  // The Banco Central sometimes publishes a day twice (a correction): keep the latest one.
+  const byDay = new Map<string, PtaxRow>();
+  for (const r of [...rows].sort((a, b) => String(a.dataHoraCotacao).localeCompare(String(b.dataHoraCotacao)))) {
+    const day = String(r.dataHoraCotacao).slice(0, 10);
+    byDay.set(day, {
+      currency,
+      day,
+      buy: Number(r.cotacaoCompra),
+      sell: Number(r.cotacaoVenda),
+      usd_parity: currency === "USD" ? 1 : Number(r.paridadeCompra ?? 0) || 1,
+    });
+  }
+  return [...byDay.values()];
 }
 
 // Today's rate for each foreign currency the app supports; currencies the Banco Central didn't answer for are left out.

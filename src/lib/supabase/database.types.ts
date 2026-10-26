@@ -126,6 +126,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"tax_months": {
+                  Row: {
+                    "alimony": number,"dependents": number | null,"inss_paid": number | null,"month": string,"other_deductions": number,"paid_on": string | null,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "alimony"?: number,"dependents"?: number | null,"inss_paid"?: number | null,"month": string,"other_deductions"?: number,"paid_on"?: string | null,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "alimony"?: number,"dependents"?: number | null,"inss_paid"?: number | null,"month"?: string,"other_deductions"?: number,"paid_on"?: string | null,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"time_entries": {
                   Row: {
                     "category_id": string | null,"created_at": string,"ended_at": string | null,"id": string,"kind": Database["public"]['Enums']["entry_kind"],"origin": string,"project_id": string | null,"source_id": string,"started_at": string,"units": number | null,"user_id": string

@@ -113,8 +113,13 @@ export type CompanyMonth = { gross: number; das: number; proLabore: number; inss
 // 28% of revenue (Fator R, at least the minimum wage) with 11% INSS and its IRRF, and the accountant.
 // The rest is distributed as profit, which is tax-free at these amounts.
 export function companyMonth(gross: number, { accountant = 250 }: { accountant?: number } = {}): CompanyMonth | null {
+  return companyMonthAt(gross, gross * 12, { accountant });
+}
+
+// The same, with the Simples bracket set by the revenue of the 12 months before (RBT12), as the law works.
+export function companyMonthAt(gross: number, rbt12: number, { accountant = 250 }: { accountant?: number } = {}): CompanyMonth | null {
   const r = RULES_2026;
-  const rate = simplesExportRate(gross * 12);
+  const rate = simplesExportRate(rbt12);
   if (!rate) return null;
   const das = round2(gross * rate.exportRate);
   const proLabore = round2(Math.max(r.minimumWage, gross * r.fatorR));
@@ -133,14 +138,84 @@ export function companyBreakEven(options: { inss?: InssPlan; dependents?: number
   return null;
 }
 
+// RBT12 for month i of a series of monthly revenues (oldest first): the 12 months before it. With less
+// history, the Simples rule uses the average of the months so far × 12, or the month itself × 12 at first.
+export function rbt12At(revenues: number[], i: number): number {
+  const before = revenues.slice(Math.max(0, i - 12), i);
+  if (!before.length) return revenues[i] * 12;
+  const sum = before.reduce((a, b) => a + b, 0);
+  return before.length < 12 ? (sum / before.length) * 12 : sum;
+}
+
+export type CarneLeaoMonth = {
+  gross: number;
+  legal: number; // INSS, dependents, alimony and other deductions
+  deduction: number; // the larger of legal deductions and the simplified discount
+  base: number;
+  tax: number;
+  reduction: number;
+  monthTax: number;
+  carry: number; // unpaid tax from earlier months under the R$ 10 minimum
+  darf: number; // what to pay this month (0 when under R$ 10, carried to the next)
+  due: string;
+};
+
+// A year of carnê-leão, month by month, like the spreadsheet: a DARF under R$ 10 isn't paid and adds to the
+// next month's. months: 12 entries, January first.
+export function carneLeaoYear(year: number, months: { gross: number; legal: number }[]): CarneLeaoMonth[] {
+  let carry = 0;
+  return months.map(({ gross, legal }, i) => {
+    const t = monthlyIncomeTax(gross, legal);
+    const pending = round2(t.due + carry);
+    const darf = pending >= RULES_2026.darfMin ? pending : 0;
+    const row = { gross, legal, deduction: t.deduction, base: t.base, tax: t.tax, reduction: t.reduction, monthTax: t.due, carry, darf, due: darfDueDate(year, i + 1) };
+    carry = darf ? 0 : pending;
+    return row;
+  });
+}
+
+// What a series of months would cost in tax and INSS each way: as an individual (carnê-leão, INSS by plan)
+// and as a Simples company (with the real RBT12 of the series). Positive savings favour the company.
+export function compareMonths(
+  revenues: number[],
+  { inss = "full", dependents = 0, accountant = 250 }: { inss?: InssPlan; dependents?: number; accountant?: number } = {},
+) {
+  let individual = 0;
+  let company = 0;
+  revenues.forEach((gross, i) => {
+    const person = individualMonth(gross, { inss, dependents });
+    individual += person.inss + person.tax;
+    const firm = companyMonthAt(gross, rbt12At(revenues, i), { accountant });
+    company += firm ? firm.das + firm.inss + firm.irrf + firm.accountant : Infinity;
+  });
+  return { individual: round2(individual), company: round2(company), savings: round2(individual - company) };
+}
+
+const isBusinessDay = (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && !HOLIDAYS.has(d.toISOString().slice(0, 10));
+
+// A day of the month after (month is 1–12), moved to the next business day when it isn't one: the DAS (20th)
+// and the self-employed INSS (15th).
+export function nextMonthDueDate(year: number, month: number, day: number): string {
+  const d = new Date(Date.UTC(year, month, day));
+  while (!isBusinessDay(d)) d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+export type DueStatus = "paid" | "overdue" | "soon" | "upcoming" | "none";
+
+// For reminders: nothing to pay, paid, late, due within `soonDays`, or later.
+export function dueStatus(amount: number, due: string, today: string, paidOn: string | null, soonDays = 7): DueStatus {
+  if (amount <= 0) return "none";
+  if (paidOn) return "paid";
+  if (today > due) return "overdue";
+  const days = (Date.parse(`${due}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000;
+  return days <= soonDays ? "soon" : "upcoming";
+}
+
 // DARF due date: the last business day of the month after the income was received. month is 1–12.
 export function darfDueDate(year: number, month: number): string {
   // Day 0 of the month after next = last day of next month.
   const d = new Date(Date.UTC(year, month + 1, 0));
-  for (;;) {
-    const key = d.toISOString().slice(0, 10);
-    const weekday = d.getUTCDay();
-    if (weekday !== 0 && weekday !== 6 && !HOLIDAYS.has(key)) return key;
-    d.setUTCDate(d.getUTCDate() - 1);
-  }
+  while (!isBusinessDay(d)) d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
