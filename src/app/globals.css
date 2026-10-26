@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+/* Design tokens from the Main.dc.html design (Handoff §6). */
+@theme {
+  --color-paper: #f6f4ee;
+  --color-ink: #13201b;
+  --color-ink-soft: #3e4a45;
+  --color-muted: #5c6762;
+  --color-line: #e4e0d5;
+  --color-field: #c9c3b5;
+  --color-brand: #0b6b4f;
+  --color-brand-tint: #e2f1ea;
+  --color-mint: #7fd9b4;
+  --color-amber: #b45309;
+  --color-amber-ink: #7a3a06;
+  --color-amber-tint: #fdf1e3;
+  --color-unpaid: #e8a33d;
+  --color-gold: #f4c27a;
+  --color-night-line: #2e3d37;
+  --color-night-text: #c5d3cd;
+}
+
+@theme inline {
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), monospace;
+}
+
+@layer base {
+  /* The design was laid out with the browser's default line height. */
+  html {
+    line-height: normal;
+  }
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+  a {
+    color: var(--color-brand);
+  }
+  a:hover {
+    color: var(--color-ink);
+  }
+}
