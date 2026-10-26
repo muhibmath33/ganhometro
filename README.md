@@ -35,6 +35,7 @@ Checks: `npm run lint` and `npm run build`.
 | `bonus/` | Scripts that build and verify the carnê-leão spreadsheet, the PDF guide (`build_guide.py`), and the BCB rates (`ptax.json`) |
 | `src/app/admin`, `src/components/admin`, `src/lib/admin` | Private waitlist dashboard and CSV export |
 | `docs/stage1-proposal.md` | Stage 1 app plan (screens, data model, architecture), waiting for approval |
+| `docs/market-sizing.md` | Target audience size: AI trainers in Brazil (estimates, sources, implications) |
 | `docs/payment-providers.md` | Payment provider comparison and recommendation |
 | `docs/marketing/` | Workana job post and marketer brief (PT-BR) |
 | `docs/emails/brevo-emails.md` | Confirmation and welcome emails (PT/EN) and Brevo automation steps |
