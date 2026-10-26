@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { SourceForm } from "@/components/app/SourceForm";
-import { Card } from "@/components/app/ui";
+import { Card, PageSkeleton } from "@/components/app/ui";
 import { getAppDictionary } from "@/i18n/app";
 import { profileLocale, requireUser } from "@/lib/app/session";
 
@@ -31,7 +31,7 @@ async function EditSource({ params }: { params: PageProps<"/app/fontes/[id]">["p
 
 export default function EditSourcePage({ params }: PageProps<"/app/fontes/[id]">) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageSkeleton />}>
       <EditSource params={params} />
     </Suspense>
   );

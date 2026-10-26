@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/components/app/OnboardingForm";
-import { Card } from "@/components/app/ui";
+import { Card, PageSkeleton } from "@/components/app/ui";
 import { getAppDictionary } from "@/i18n/app";
 import { profileLocale, requireUser } from "@/lib/app/session";
 
@@ -23,7 +23,7 @@ async function Onboarding() {
 
 export default function OnboardingPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageSkeleton />}>
       <Onboarding />
     </Suspense>
   );

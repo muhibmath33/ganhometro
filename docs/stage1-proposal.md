@@ -1,6 +1,8 @@
 # Stage 1 app: plan
 
-**Status:** approved by Xinning on 27 Oct 2026, with the general design from [audience-expansion.md](audience-expansion.md). Building starts now.
+**Status:** approved by Xinning on 27 Oct 2026, with the general design from [audience-expansion.md](audience-expansion.md).
+**Progress:** build weeks 3 and 4 are done (sign-in, platforms, timer, time log, dashboard with the real rate), running on a local Supabase.
+Google sign-in waits for a Google Cloud OAuth setup. Next: payments, PTAX job, underpayment (week 5).
 **Scope:** features 1–6 from the handoff, plus login, Free/Pro plans, card + Pix checkout and the weekly summary email.
 **Timeline:** build weeks 3–9, founding users at weeks 10–12 (handoff Part D5).
 

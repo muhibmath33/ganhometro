@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { setSourceArchived } from "@/app/app/actions";
 import { SourceForm } from "@/components/app/SourceForm";
-import { Card } from "@/components/app/ui";
+import { Card, PageSkeleton } from "@/components/app/ui";
 import { getAppDictionary } from "@/i18n/app";
 import { describeSource, type Source } from "@/lib/app/sources";
 import { profileLocale, requireUser } from "@/lib/app/session";
@@ -81,7 +81,7 @@ async function Sources({ searchParams }: { searchParams: PageProps<"/app/fontes"
 
 export default function SourcesPage({ searchParams }: PageProps<"/app/fontes">) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageSkeleton />}>
       <Sources searchParams={searchParams} />
     </Suspense>
   );

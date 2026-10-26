@@ -2,23 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BriefcaseIcon, ChartIcon, ClockIcon, ListIcon, SlidersIcon } from "../icons";
 
-export function AppNav({ items }: { items: { href: string; label: string }[] }) {
+const ICONS = { today: ClockIcon, dashboard: ChartIcon, log: ListIcon, sources: BriefcaseIcon, settings: SlidersIcon };
+
+export type NavItem = { href: string; label: string; icon: keyof typeof ICONS };
+
+// A tab bar at the bottom on phones, links in the header from 640px up.
+export function AppNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
   return (
-    <nav aria-label="App" className="flex flex-wrap gap-1">
+    <nav
+      aria-label="App"
+      className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-white pb-[env(safe-area-inset-bottom)] sm:static sm:flex sm:flex-wrap sm:gap-1 sm:border-0 sm:bg-transparent sm:pb-0"
+    >
       {items.map((item) => {
         const active = item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href);
+        const Icon = ICONS[item.icon];
         return (
           <Link
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className={`rounded-[9px] px-3 py-2 text-[14px] font-semibold no-underline ${
-              active ? "bg-ink text-white hover:text-white" : "text-ink-soft hover:text-ink"
+            className={`flex min-w-0 flex-col items-center gap-0.5 px-1 pt-2 pb-1.5 text-[11px] font-semibold no-underline sm:rounded-[9px] sm:px-3 sm:py-2 sm:text-[14px] ${
+              active ? "text-brand hover:text-brand sm:bg-ink sm:text-white sm:hover:text-white" : "text-muted hover:text-ink sm:text-ink-soft"
             }`}
           >
-            {item.label}
+            <Icon size={22} className="sm:hidden" />
+            <span className="max-w-full truncate">{item.label}</span>
           </Link>
         );
       })}

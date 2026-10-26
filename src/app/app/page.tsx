@@ -1,65 +1,104 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Card } from "@/components/app/ui";
-import { getAppDictionary } from "@/i18n/app";
-import { describeSource } from "@/lib/app/sources";
-import { profileLocale, requireUser } from "@/lib/app/session";
+import { type RunningEntry, Timer, TodayTotals, type TodayRow } from "@/components/app/Timer";
+import { Card, PageSkeleton } from "@/components/app/ui";
+import { categoryName, getAppDictionary } from "@/i18n/app";
+import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
+import { dayKey, startOfDay } from "@/lib/app/time";
 
 async function Today() {
   const { supabase, profile } = await requireUser();
   const locale = profileLocale(profile);
   const t = getAppDictionary(locale);
-  const { data: sources } = await supabase
-    .from("income_sources")
-    .select("*")
-    .is("archived_at", null)
-    .order("created_at");
+  const tz = profile.timezone;
+  const serverNow = requestNow();
+  const dayStart = startOfDay(dayKey(new Date(serverNow), tz), tz).getTime();
+
+  const [{ data: sourceRows }, { data: categories }, { data: entryRows }] = await Promise.all([
+    supabase.from("income_sources").select("id, name, pay_model, archived_at").order("created_at"),
+    supabase.from("categories").select("id, kind, name, preset").is("archived_at", null).order("sort"),
+    // Everything that touches today: finished today, or still running.
+    supabase
+      .from("time_entries")
+      .select("id, source_id, kind, category_id, started_at, ended_at")
+      .or(`ended_at.gte.${new Date(dayStart).toISOString()},ended_at.is.null`)
+      .order("started_at"),
+  ]);
+  const sources = sourceRows ?? [];
+  const entries = entryRows ?? [];
+  const byId = new Map(sources.map((s) => [s.id, s]));
+  const active = sources.filter((s) => !s.archived_at).map((s) => ({ id: s.id, name: s.name, perTask: s.pay_model === "per_task" }));
+
+  const runningRow = entries.find((e) => !e.ended_at);
+  const running: RunningEntry | null = runningRow
+    ? {
+        id: runningRow.id,
+        sourceId: runningRow.source_id,
+        sourceName: byId.get(runningRow.source_id)?.name ?? "",
+        kind: runningRow.kind,
+        categoryId: runningRow.category_id,
+        startedAt: Date.parse(runningRow.started_at),
+        perTask: byId.get(runningRow.source_id)?.pay_model === "per_task",
+      }
+    : null;
+
+  // Finished time today per platform (from midnight). The running entry is added live on the client.
+  const totals = new Map<string, TodayRow>();
+  const row = (id: string) => {
+    if (!totals.has(id)) totals.set(id, { sourceId: id, name: byId.get(id)?.name ?? "", paidMs: 0, unpaidMs: 0 });
+    return totals.get(id)!;
+  };
+  for (const e of entries) {
+    if (!e.ended_at) {
+      row(e.source_id);
+      continue;
+    }
+    const ms = Math.max(0, Date.parse(e.ended_at) - Math.max(Date.parse(e.started_at), dayStart));
+    if (e.kind === "paid") row(e.source_id).paidMs += ms;
+    else row(e.source_id).unpaidMs += ms;
+  }
+
+  // Start with the platform used last today, else the first one.
+  const last = entries.at(-1);
+  const defaultSourceId = last && active.some((s) => s.id === last.source_id) ? last.source_id : (active[0]?.id ?? null);
+  const date = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(serverNow);
 
   return (
     <>
       <div className="flex flex-col gap-1">
         <h1 className="m-0 text-[28px] font-extrabold tracking-[-0.02em]">{t.today.title}</h1>
-        <p className="m-0 text-[15px] text-ink-soft">{t.today.hello}</p>
+        <p className="m-0 text-[15px] text-ink-soft first-letter:uppercase">{date}</p>
       </div>
 
-      <Card className="border-dashed">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-amber-tint px-2 py-0.5 text-[11px] font-bold tracking-[0.04em] text-amber-ink uppercase">
-            {t.common.soon}
-          </span>
-          <p className="m-0 text-[15px] text-ink-soft">{t.today.timerSoon}</p>
-        </div>
-      </Card>
+      <div className="grid items-start gap-5 md:grid-cols-[1.25fr_1fr]">
+        <Card>
+          <Timer
+            t={t}
+            sources={active}
+            categories={(categories ?? []).map((c) => ({ ...c, name: categoryName(c, locale) }))}
+            running={running}
+            defaultSourceId={defaultSourceId}
+            serverNow={serverNow}
+          />
+        </Card>
 
-      <Card>
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="m-0 text-[17px] font-bold">{t.today.yourSources}</h2>
-          <Link href="/app/fontes" className="text-[14px] font-semibold">
-            {t.today.manage}
-          </Link>
-        </div>
-        {sources && sources.length > 0 ? (
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
-            {sources.map((s) => (
-              <li key={s.id} className="flex flex-col gap-0.5 rounded-[12px] bg-paper px-4 py-3">
-                <span className="text-[15px] font-bold">{s.name}</span>
-                <span className="text-[13px] text-ink-soft">{describeSource(s, t, locale)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <Link href="/app/fontes" className="text-[15px] font-semibold">
-            {t.today.addFirst}
-          </Link>
-        )}
-      </Card>
+        <Card>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="m-0 text-[17px] font-bold">{t.today.byPlatform}</h2>
+            <Link href="/app/registro" className="text-[14px] font-semibold">
+              {t.today.seeLog}
+            </Link>
+          </div>
+          <TodayTotals t={t} locale={locale} rows={[...totals.values()]} running={running} dayStart={dayStart} serverNow={serverNow} />
+        </Card>
+      </div>
     </>
   );
 }
 
 export default function TodayPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageSkeleton />}>
       <Today />
     </Suspense>
   );

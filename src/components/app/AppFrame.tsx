@@ -5,6 +5,7 @@ import { appConfigured } from "@/lib/supabase/server";
 import { HtmlLang } from "../HtmlLang";
 import { LogoIcon } from "../icons";
 import { AppNav } from "./AppNav";
+import { PageSkeleton } from "./ui";
 
 function Header({ children }: { children?: React.ReactNode }) {
   return (
@@ -23,7 +24,14 @@ function Header({ children }: { children?: React.ReactNode }) {
 }
 
 export function AppShellFallback() {
-  return <Header />;
+  return (
+    <>
+      <Header />
+      <main className="mx-auto flex max-w-[960px] flex-col gap-5 px-5 py-6">
+        <PageSkeleton />
+      </main>
+    </>
+  );
 }
 
 // Reads the session (per request, inside the layout's <Suspense>), then renders the header in the
@@ -51,14 +59,17 @@ export async function AppFrame({ children }: { children: React.ReactNode }) {
         {showNav && (
           <AppNav
             items={[
-              { href: "/app", label: t.nav.today },
-              { href: "/app/fontes", label: t.nav.sources },
-              { href: "/app/ajustes", label: t.nav.settings },
+              { href: "/app", label: t.nav.today, icon: "today" },
+              { href: "/app/painel", label: t.nav.dashboard, icon: "dashboard" },
+              { href: "/app/registro", label: t.nav.log, icon: "log" },
+              { href: "/app/fontes", label: t.nav.sources, icon: "sources" },
+              { href: "/app/ajustes", label: t.nav.settings, icon: "settings" },
             ]}
           />
         )}
       </Header>
-      <main lang={locale} className="mx-auto flex max-w-[960px] flex-col gap-5 px-5 py-6">
+      {/* On phones the nav is a fixed tab bar, so leave room for it below the content. */}
+      <main lang={locale} className={`mx-auto flex max-w-[960px] flex-col gap-5 px-5 pt-6 ${showNav ? "pb-28 sm:pb-6" : "pb-6"}`}>
         {children}
       </main>
     </>

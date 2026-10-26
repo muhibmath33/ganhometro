@@ -6,7 +6,8 @@ Signups go to a Brevo list, and analytics use Umami Cloud (free, no cookies).
 There's also a second landing page for freelancers paid in dollars at `/freelancers` (and `/en/freelancers`), used to test that audience before launch.
 
 The app itself lives under `/app` and is being built week by week, following `docs/stage1-proposal.md`.
-It uses Supabase (Postgres + sign-in by emailed code). Done so far: sign-in, onboarding, platforms and clients (with the Free plan's limit of 2), settings.
+It uses Supabase (Postgres + sign-in by emailed code). Done so far: sign-in, onboarding, platforms and clients (with the Free plan's limit of 2), settings,
+the timer (paid/unpaid, categories), the time log with manual entries, and the dashboard with the real hourly rate.
 
 ## Run locally
 
@@ -19,7 +20,7 @@ npm run dev                  # http://localhost:3000
 Without Brevo keys, the form still works locally. The signup is printed in the terminal instead of being saved.
 In production, a missing key makes the form show an error, so a misconfigured deploy can't silently lose signups.
 
-Checks: `npm run lint` and `npm run build`.
+Checks: `npm run lint`, `npm test` (unit tests for the calculations, Node's built-in test runner) and `npm run build`.
 
 ### The app (`/app`) locally
 
@@ -55,12 +56,13 @@ It prints an **API URL** and a **Publishable key**. Put them in `.env.local` as
 | `src/app/opengraph-image.tsx` | Link preview image for WhatsApp, Instagram and others |
 | `bonus/` | Scripts that build and verify the carnê-leão spreadsheet, the PDF guide (`build_guide.py`), and the BCB rates (`ptax.json`) |
 | `src/app/admin`, `src/components/admin`, `src/lib/admin` | Private waitlist dashboard and CSV export |
-| `src/app/app/` | The app: `entrar` (sign in), `boas-vindas` (onboarding), `fontes` (platforms and clients), `ajustes` (settings), `auth/confirm` (email link) |
+| `src/app/app/` | The app: `page.tsx` (Today, with the timer), `painel` (dashboard), `registro` (time log), `fontes` (platforms and clients), `ajustes` (settings), `entrar` (sign in), `boas-vindas` (onboarding), `auth/confirm` (email link) |
 | `src/app/app/actions.ts` | Every form in the app (server actions) |
 | `src/components/app/`, `src/i18n/app.ts` | App screens' building blocks, and all app text (PT/EN) |
-| `src/lib/app/` | Signed-in user and profile (`session.ts`), platform/client form rules (`sources.ts`) |
+| `src/lib/app/` | Signed-in user and profile (`session.ts`), platform/client and time entry form rules (`sources.ts`, `entries.ts`), time zones (`time.ts`) |
+| `src/lib/money/` | Real hourly rate (`realRate.ts`, with tests) and the Banco Central PTAX rate (`ptax.ts`) |
 | `src/lib/supabase/`, `src/proxy.ts` | Supabase client, generated database types, session refresh for `/app` |
-| `supabase/migrations/` | Database tables, security rules (each user sees only their own rows) and the Free plan limit |
+| `supabase/migrations/` | Database tables, security rules (each user sees only their own rows), the Free plan limit, and no overlapping time entries |
 | `supabase/templates/magic_link.html` | The sign-in email (PT/EN), with the 6-digit code and a link |
 | `docs/stage1-proposal.md` | Stage 1 app plan (screens, data model, architecture), approved 27 Oct 2026 |
 | `docs/partnership-checklist.md` | What Xinning and Gabriel should agree in writing, plus questions for the accountant and lawyer |

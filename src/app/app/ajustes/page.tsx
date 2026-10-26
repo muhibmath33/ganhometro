@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { signOut } from "@/app/app/actions";
 import { SettingsForm } from "@/components/app/SettingsForm";
-import { Card } from "@/components/app/ui";
+import { Card, PageSkeleton } from "@/components/app/ui";
 import { getAppDictionary } from "@/i18n/app";
 import { isPro, profileLocale, requireUser } from "@/lib/app/session";
 
@@ -34,7 +34,7 @@ async function Settings() {
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageSkeleton />}>
       <Settings />
     </Suspense>
   );

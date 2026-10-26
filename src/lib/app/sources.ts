@@ -16,6 +16,7 @@ export const CURRENCIES = ["USD", "EUR", "GBP", "BRL"] as const;
 export const WORK_TYPES = ["ai", "freelancer", "teacher", "creator", "other"] as const satisfies readonly Enums["work_type"][];
 
 const SYMBOLS: Record<string, string> = { USD: "US$", EUR: "€", GBP: "£", BRL: "R$" };
+export const currencySymbol = (currency: string) => SYMBOLS[currency] ?? currency;
 
 const pick = <T extends string>(value: FormDataEntryValue | null, allowed: readonly T[], fallback: T): T =>
   allowed.includes(value as T) ? (value as T) : fallback;
@@ -76,7 +77,7 @@ export function parseSourceForm(form: FormData): { data: SourceInput } | { error
 // "US$ 25,00/h · comissão 20%" in the user's language.
 export function describeSource(source: Source, t: AppDictionary, locale: Locale): string {
   const parts: string[] = [];
-  const symbol = SYMBOLS[source.currency] ?? source.currency;
+  const symbol = currencySymbol(source.currency);
   if (source.pay_model === "fixed") parts.push(t.sources.fixed);
   else if (source.rate !== null)
     parts.push(formatMoney(symbol, Number(source.rate), locale) + (source.pay_model === "per_task" ? t.sources.perTask : t.sources.perHour));

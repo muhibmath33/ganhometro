@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { CATEGORY_PRESETS } from "@/i18n/app";
+import { type EntryError, type EntryKind, MIN_TIMER_MS, parseEntryForm, parseKind, parseUnits } from "@/lib/app/entries";
 import { parseSourceForm, type SourceError, WORK_TYPES } from "@/lib/app/sources";
 import { getSession, requireUser } from "@/lib/app/session";
 import { site } from "@/lib/site";
@@ -110,6 +111,137 @@ export async function setSourceArchived(form: FormData) {
     .eq("id", id);
   revalidatePath("/app", "layout");
   redirect(error && isFreeLimit(error.message) ? "/app/fontes?limite=1" : "/app/fontes");
+}
+
+// --- Timer ---------------------------------------------------------------------------
+// The running entry lives on the server (ended_at = null), so it survives closing the tab or
+// switching phones. The database allows one running entry per user and no overlaps.
+
+export type TimerState = { error?: "generic" } | null;
+
+type Supabase = Awaited<ReturnType<typeof requireUser>>["supabase"];
+
+// A category must be one of the user's (RLS) and of the same kind as the entry.
+async function categoryFits(supabase: Supabase, categoryId: string | null, kind: EntryKind) {
+  if (!categoryId) return true;
+  const { data } = await supabase.from("categories").select("kind").eq("id", categoryId).maybeSingle();
+  return data?.kind === kind;
+}
+
+export async function startTimer(_prev: TimerState, form: FormData): Promise<TimerState> {
+  const { supabase } = await requireUser();
+  const kind = parseKind(form.get("kind"));
+  const categoryId = String(form.get("category_id") ?? "") || null;
+  if (!(await categoryFits(supabase, categoryId, kind))) return { error: "generic" };
+  const { error } = await supabase.from("time_entries").insert({
+    source_id: String(form.get("source_id") ?? ""),
+    kind,
+    category_id: categoryId,
+    started_at: new Date().toISOString(),
+    origin: "timer",
+  });
+  // 23505: a timer is already running (started on another device). Showing that one is the right outcome.
+  if (error && error.code !== "23505") return { error: "generic" };
+  revalidatePath("/app", "layout");
+  return null;
+}
+
+// Paid ↔ unpaid, or another category: ends the running entry and starts the next one at the same instant.
+// `target` is "kind:categoryId".
+export async function switchTimer(_prev: TimerState, form: FormData): Promise<TimerState> {
+  const { supabase } = await requireUser();
+  const [kindText, categoryText = ""] = String(form.get("target") ?? "").split(":");
+  const kind = parseKind(kindText);
+  const categoryId = categoryText || null;
+  const units = parseUnits(form.get("units"));
+  const { data: running } = await supabase
+    .from("time_entries")
+    .select("id, source_id, started_at")
+    .is("ended_at", null)
+    .maybeSingle();
+  if (running && (await categoryFits(supabase, categoryId, kind))) {
+    const now = new Date();
+    if (now.getTime() - Date.parse(running.started_at) < MIN_TIMER_MS) {
+      const { error } = await supabase.from("time_entries").update({ kind, category_id: categoryId }).eq("id", running.id);
+      if (error) return { error: "generic" };
+    } else {
+      const { error } = await supabase
+        .from("time_entries")
+        .update({ ended_at: now.toISOString(), ...(units !== undefined && units !== null ? { units } : {}) })
+        .eq("id", running.id);
+      if (error) return { error: "generic" };
+      const { error: startError } = await supabase.from("time_entries").insert({
+        source_id: running.source_id,
+        kind,
+        category_id: categoryId,
+        started_at: now.toISOString(),
+        origin: "timer",
+      });
+      if (startError) return { error: "generic" };
+    }
+  }
+  revalidatePath("/app", "layout");
+  return null;
+}
+
+export async function stopTimer(_prev: TimerState, form: FormData): Promise<TimerState> {
+  const { supabase } = await requireUser();
+  const id = String(form.get("id") ?? "");
+  const units = parseUnits(form.get("units"));
+  const { data: running } = await supabase
+    .from("time_entries")
+    .select("id, started_at")
+    .eq("id", id)
+    .is("ended_at", null)
+    .maybeSingle();
+  if (running) {
+    const now = new Date();
+    const { error } =
+      now.getTime() - Date.parse(running.started_at) < MIN_TIMER_MS
+        ? await supabase.from("time_entries").delete().eq("id", id)
+        : await supabase
+            .from("time_entries")
+            .update({ ended_at: now.toISOString(), ...(units !== undefined && units !== null ? { units } : {}) })
+            .eq("id", id);
+    if (error) return { error: "generic" };
+  }
+  revalidatePath("/app", "layout");
+  return null;
+}
+
+// --- Time log ------------------------------------------------------------------------
+
+export type EntryFormState = { error?: EntryError | "generic"; ok?: boolean; savedAt?: number } | null;
+
+// Add a missed entry (no id) or edit one (with id).
+export async function saveEntry(_prev: EntryFormState, form: FormData): Promise<EntryFormState> {
+  const { supabase, profile } = await requireUser();
+  const id = String(form.get("id") ?? "");
+  let running = false;
+  if (id) {
+    const { data } = await supabase.from("time_entries").select("ended_at").eq("id", id).maybeSingle();
+    if (!data) return { error: "generic" };
+    running = data.ended_at === null;
+  }
+  const parsed = parseEntryForm(form, profile.timezone, new Date(), { running });
+  if ("error" in parsed) return { error: parsed.error };
+  if (!(await categoryFits(supabase, parsed.data.category_id, parsed.data.kind))) return { error: "category" };
+
+  const { error } = id
+    ? await supabase.from("time_entries").update(parsed.data).eq("id", id)
+    : await supabase.from("time_entries").insert({ ...parsed.data, origin: "manual" });
+  // 23P01: overlaps another entry. 23505: a second running entry. 23503: not one of the user's sources.
+  if (error) return { error: error.code === "23P01" || error.code === "23505" ? "overlap" : error.code === "23503" ? "source" : "generic" };
+  revalidatePath("/app", "layout");
+  if (id) redirect("/app/registro");
+  return { ok: true, savedAt: Date.now() };
+}
+
+export async function deleteEntry(form: FormData) {
+  const { supabase } = await requireUser();
+  await supabase.from("time_entries").delete().eq("id", String(form.get("id") ?? ""));
+  revalidatePath("/app", "layout");
+  redirect("/app/registro");
 }
 
 // --- Settings ------------------------------------------------------------------------
