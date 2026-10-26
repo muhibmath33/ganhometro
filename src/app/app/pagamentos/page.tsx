@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { formatDay } from "@/components/calculators/shared";
+import { LateAlerts } from "@/components/app/LateAlerts";
 import { PaymentForm } from "@/components/app/PaymentForm";
 import { Card, PageSkeleton } from "@/components/app/ui";
 import { getAppDictionary } from "@/i18n/app";
 import { fill } from "@/i18n/config";
+import { latePayments } from "@/lib/app/alerts";
 import { paymentMoney } from "@/lib/app/money";
 import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { currencySymbol } from "@/lib/app/sources";
@@ -16,7 +18,7 @@ import { checkUnderpayment } from "@/lib/money/received";
 const LIMIT = 200;
 
 async function Payments({ searchParams }: { searchParams: PageProps<"/app/pagamentos">["searchParams"] }) {
-  const { supabase, profile } = await requireUser();
+  const { supabase, profile, user } = await requireUser();
   const locale = profileLocale(profile);
   const t = getAppDictionary(locale);
   const tz = profile.timezone;
@@ -24,9 +26,10 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/app/pagame
   const now = requestNow();
   const today = dayKey(new Date(now), tz);
 
-  const [{ data: paymentRows }, { data: sourceRows }] = await Promise.all([
+  const [{ data: paymentRows }, { data: sourceRows }, late] = await Promise.all([
     supabase.from("payments").select("*").order("received_on", { ascending: false }).order("created_at", { ascending: false }).limit(LIMIT),
     supabase.from("income_sources").select("id, name, currency, pay_model, rate, commission_pct, archived_at").order("created_at"),
+    latePayments(supabase, user.id, tz, today),
   ]);
   const payments = paymentRows ?? [];
   const sources = sourceRows ?? [];
@@ -62,6 +65,8 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/app/pagame
         <h1 className="m-0 text-[28px] font-extrabold tracking-[-0.02em]">{t.payments.title}</h1>
         <p className="m-0 max-w-[640px] text-[15px] text-ink-soft">{t.payments.lead}</p>
       </div>
+
+      <LateAlerts t={t} locale={locale} alerts={late} />
 
       {typeof params.importados === "string" && (
         <p role="status" className="m-0 rounded-[12px] bg-brand-tint px-4 py-3 text-[14px] font-semibold text-brand">

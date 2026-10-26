@@ -9,8 +9,27 @@ import { createClient } from "@/lib/supabase/server";
 
 export type Profile = Pick<
   Database["public"]["Tables"]["profiles"]["Row"],
-  "locale" | "timezone" | "work_type" | "plan" | "pro_until" | "onboarded_at" | "tax_mode" | "inss_plan" | "dependents" | "accountant_cost"
+  | "locale"
+  | "timezone"
+  | "work_type"
+  | "plan"
+  | "pro_until"
+  | "onboarded_at"
+  | "tax_mode"
+  | "inss_plan"
+  | "dependents"
+  | "accountant_cost"
+  | "salary_target"
+  | "reserve_13th"
+  | "reserve_vacation"
+  | "emergency_pct"
+  | "emergency_months"
+  | "email_reminders"
+  | "email_weekly"
 >;
+
+export const PROFILE_FIELDS =
+  "locale, timezone, work_type, plan, pro_until, onboarded_at, tax_mode, inss_plan, dependents, accountant_cost, salary_target, reserve_13th, reserve_vacation, emergency_pct, emergency_months, email_reminders, email_weekly";
 
 // Memoized per request, so the layout and the page share one lookup.
 export const getSession = cache(async () => {
@@ -22,7 +41,7 @@ export const getSession = cache(async () => {
   if (!data.user) return { supabase, user: null, profile: null };
   const { data: profile } = await supabase
     .from("profiles")
-    .select("locale, timezone, work_type, plan, pro_until, onboarded_at, tax_mode, inss_plan, dependents, accountant_cost")
+    .select(PROFILE_FIELDS)
     .eq("id", data.user.id)
     .single();
   return { supabase, user: { id: data.user.id, email: data.user.email ?? "" }, profile: profile as Profile | null };

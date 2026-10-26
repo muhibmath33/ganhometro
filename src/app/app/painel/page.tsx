@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ReservesCard } from "@/components/app/ReservesCard";
 import { TakeHomeCard } from "@/components/app/TakeHomeCard";
 import { Card, PageSkeleton, SplitBar, SplitLegend } from "@/components/app/ui";
 import { categoryName, getAppDictionary } from "@/i18n/app";
 import { fill } from "@/i18n/config";
-import { monthSummary, taxProfile } from "@/lib/app/money";
+import { reserveSettings, takeHomeHistory, taxProfile } from "@/lib/app/money";
 import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { currencySymbol } from "@/lib/app/sources";
 import { addDays, dayKey, formatDuration, startOfDay } from "@/lib/app/time";
@@ -12,13 +13,14 @@ import { formatMoney } from "@/lib/calc";
 import { latestPtax } from "@/lib/money/ptax";
 import { entryHours, summarize } from "@/lib/money/realRate";
 import { checkUnderpayment, periodShare, receivedSummary } from "@/lib/money/received";
+import { reserveHistory, suggestedSalary } from "@/lib/money/reserves";
 
 const PERIODS = ["7", "28", "month"] as const;
 type Period = (typeof PERIODS)[number];
 const HOUR = 3_600_000;
 
 async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/painel">["searchParams"] }) {
-  const { supabase, profile } = await requireUser();
+  const { supabase, profile, user } = await requireUser();
   const locale = profileLocale(profile);
   const t = getAppDictionary(locale);
   const d = t.dashboard;
@@ -31,14 +33,27 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
   const fromDay = period === "month" ? `${today.slice(0, 8)}01` : addDays(today, -(Number(period) - 1));
   const from = startOfDay(fromDay, tz).getTime();
 
-  // Payments whose work period touches this period, and the month's take-home (always the calendar month).
-  const [{ data: paymentRows }, month] = await Promise.all([
+  // Payments whose work period touches this period, and the take-home of every month since the first
+  // payment (up to 24): this month's for the card, all of them for the reserves.
+  const currentKey = today.slice(0, 7);
+  const oldestKey = new Date(Date.UTC(Number(currentKey.slice(0, 4)), Number(currentKey.slice(5, 7)) - 24, 1)).toISOString().slice(0, 7);
+  const [{ data: paymentRows }, { data: firstPayment }] = await Promise.all([
     supabase
       .from("payments")
       .select("source_id, amount, received_on, period_start, period_end")
+      .eq("user_id", user.id)
       .or(`period_end.gte.${fromDay},received_on.gte.${fromDay}`),
-    monthSummary(supabase, profile, Number(today.slice(0, 4)), Number(today.slice(5, 7))),
+    supabase.from("payments").select("received_on").eq("user_id", user.id).order("received_on").limit(1),
   ]);
+  const firstKey = firstPayment?.[0]?.received_on.slice(0, 7) ?? currentKey;
+  const fromKey = firstKey < oldestKey ? oldestKey : firstKey > currentKey ? currentKey : firstKey;
+  const history = await takeHomeHistory(supabase, profile, user.id, fromKey, currentKey);
+  const month = history[history.length - 1];
+  const settings = reserveSettings(profile);
+  const monthsMoney = history.map((h) => ({ kept: h.takeHome.kept, tax: h.takeHome.tax, inss: h.takeHome.inss }));
+  const reserves = reserveHistory(monthsMoney, settings, Number(fromKey.slice(5, 7)));
+  // Suggest a salary from complete months only.
+  const suggestion = suggestedSalary(monthsMoney.slice(0, -1).map((m) => m.kept), settings);
   const payments = (paymentRows ?? []).map((p) => ({ ...p, amount: Number(p.amount) }));
   // Hours from the earliest payment period too, so "possível diferença" sees all the work a payment covers.
   const entriesFrom = Math.min(from, ...payments.map((p) => startOfDay(p.period_start ?? p.received_on, tz).getTime()));
@@ -66,9 +81,11 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
     const summary = summarize(rateSource, mine, now, from);
     // With payments in the period, the real rate comes from the money received; otherwise it's an estimate.
     const sourcePayments = payments.filter((p) => p.source_id === s.id);
-    const received = sourcePayments.some((p) => periodShare(p, fromDay, today) > 0)
+    const summaryFromPayments = sourcePayments.some((p) => periodShare(p, fromDay, today) > 0)
       ? receivedSummary(rateSource, mine, sourcePayments, { fromDay, toDay: today, timeZone: tz, now })
       : null;
+    // A payment whose days have no logged hours can't give a rate; the estimate is more useful then.
+    const received = summaryFromPayments && summaryFromPayments.coveredHours > 0 ? summaryFromPayments : null;
     const underpaid = sourcePayments.filter(
       (p) => checkUnderpayment(rateSource, p, allEntries.filter((e) => e.source_id === s.id), { timeZone: tz, now })?.flagged,
     ).length;
@@ -112,6 +129,8 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
   const fxDate = [...ptax.values()].find((p) => p && p.date)?.date;
   const fxMissing = [...ptax.entries()].some(([c, p]) => c !== "BRL" && !p);
 
+  const monthLabel = new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" }).format(new Date(`${currentKey}-15T12:00:00Z`));
+
   const tile = (label: string, value: string, sub?: string) => (
     <div className="flex flex-col gap-1 rounded-2xl border border-line bg-white p-4">
       <span className="text-[13px] font-semibold text-ink-soft">{label}</span>
@@ -142,14 +161,19 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
         ))}
       </nav>
 
-      <TakeHomeCard
-        t={t}
-        locale={locale}
-        month={new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" }).format(new Date(`${today.slice(0, 7)}-15T12:00:00Z`))}
-        takeHome={month.takeHome}
-        count={month.count}
-        mode={taxProfile(profile).tax_mode}
-      />
+      <TakeHomeCard t={t} locale={locale} month={monthLabel} takeHome={month.takeHome} count={month.count} mode={taxProfile(profile).tax_mode} />
+      {month.count > 0 && (
+        <ReservesCard
+          t={t}
+          locale={locale}
+          month={monthLabel}
+          plan={reserves.plans[reserves.plans.length - 1]}
+          history={reserves}
+          salarySet={settings.salary !== null}
+          suggestion={suggestion}
+          emergencyTarget={(settings.salary ?? 0) * settings.emergencyMonths}
+        />
+      )}
 
       {hours === 0 ? (
         <Card>

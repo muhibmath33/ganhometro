@@ -1,6 +1,7 @@
-// Daily job (Vercel Cron, weekdays after the Banco Central publishes the closing rates): stores the latest
-// PTAX rates. Later sprints add the late-payment checks and DARF reminders here.
+// Daily job (Vercel Cron, after the Banco Central publishes the closing rates): stores the latest PTAX rates,
+// then emails DARF/DAS reminders and late-payment alerts.
 import { addDays } from "@/lib/app/time";
+import { runDailyNotifications } from "@/lib/jobs/notifications";
 import { fetchPtaxRange } from "@/lib/money/ptax";
 import { adminClient } from "@/lib/supabase/admin";
 
@@ -27,6 +28,13 @@ export async function GET(request: Request) {
       }
     }),
   );
-  const ok = results.every((r) => !r.error);
-  return Response.json({ ok, results }, { status: ok ? 200 : 502 });
+  // Reminders run even if a rate fetch failed: the stored rates are enough for them.
+  let emails: Awaited<ReturnType<typeof runDailyNotifications>> | { error: string };
+  try {
+    emails = await runDailyNotifications();
+  } catch (err) {
+    emails = { error: String(err) };
+  }
+  const ok = results.every((r) => !r.error) && !("error" in emails);
+  return Response.json({ ok, rates: results, emails }, { status: ok ? 200 : 502 });
 }

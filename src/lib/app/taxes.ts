@@ -58,14 +58,15 @@ export type TaxYear = {
 
 const key = (year: number, month: number) => `${year}-${String(month).padStart(2, "0")}`;
 
-export async function loadTaxYear(supabase: SupabaseClient<Database>, profile: Profile, year: number, today: string): Promise<TaxYear> {
+// userId is filtered explicitly: the background jobs call this with the secret key, which bypasses RLS.
+export async function loadTaxYear(supabase: SupabaseClient<Database>, profile: Profile, userId: string, year: number, today: string): Promise<TaxYear> {
   const tp = taxProfile(profile);
   // Last year too: a company's tax bracket depends on the 12 months before each month.
   const from = `${year - 1}-01-01`;
   const to = `${year}-12-31`;
   const [{ data: paymentRows }, { data: detailRows }] = await Promise.all([
-    supabase.from("payments").select("amount, currency, received_on").gte("received_on", from).lte("received_on", to),
-    supabase.from("tax_months").select("*").gte("month", `${year}-01-01`).lte("month", `${year}-12-01`),
+    supabase.from("payments").select("amount, currency, received_on").eq("user_id", userId).gte("received_on", from).lte("received_on", to),
+    supabase.from("tax_months").select("*").eq("user_id", userId).gte("month", `${year}-01-01`).lte("month", `${year}-12-01`),
   ]);
   const payments = paymentRows ?? [];
   const book = await loadRates(supabase, payments.map((p) => p.currency), from, to < today ? to : today);

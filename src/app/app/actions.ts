@@ -418,6 +418,41 @@ export async function setTaxPaid(form: FormData) {
 
 // --- Settings ------------------------------------------------------------------------
 
+export async function saveReserveSettings(_prev: FormState, form: FormData): Promise<FormState> {
+  const { supabase, user } = await requireUser();
+  const salaryText = String(form.get("salary_target") ?? "").trim();
+  const salary = salaryText === "" ? null : parseNumber(salaryText);
+  const pct = parseNumber(String(form.get("emergency_pct") ?? "10"));
+  const months = Math.floor(parseNumber(String(form.get("emergency_months") ?? "6")));
+  if ((salary !== null && !(salary >= 0 && salary <= 1_000_000)) || !(pct >= 0 && pct <= 100) || !(months >= 0 && months <= 24)) {
+    return { error: "generic" };
+  }
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      salary_target: salary,
+      reserve_13th: form.get("reserve_13th") === "on",
+      reserve_vacation: form.get("reserve_vacation") === "on",
+      emergency_pct: pct,
+      emergency_months: months,
+    })
+    .eq("id", user.id);
+  if (error) return { error: "generic" };
+  revalidatePath("/app", "layout");
+  return { ok: true };
+}
+
+export async function saveEmailSettings(_prev: FormState, form: FormData): Promise<FormState> {
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ email_reminders: form.get("email_reminders") === "on", email_weekly: form.get("email_weekly") === "on" })
+    .eq("id", user.id);
+  if (error) return { error: "generic" };
+  revalidatePath("/app", "layout");
+  return { ok: true };
+}
+
 export async function saveTaxSettings(_prev: FormState, form: FormData): Promise<FormState> {
   const { supabase, user } = await requireUser();
   const inss = String(form.get("inss_plan") ?? "");

@@ -38,6 +38,20 @@ export type Database = {
                   Relationships: [
                     
                   ]
+                },"email_log": {
+                  Row: {
+                    "ref": string,"sent_at": string,"type": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "ref": string,"sent_at"?: string,"type": string,"user_id": string
+                  }
+                  Update: {
+                    "ref"?: string,"sent_at"?: string,"type"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"income_sources": {
                   Row: {
                     "archived_at": string | null,"commission_pct": number | null,"created_at": string,"currency": string,"grace_days": number,"id": string,"kind": Database["public"]['Enums']["source_kind"],"name": string,"pay_day": number | null,"pay_model": Database["public"]['Enums']["pay_model"],"pay_schedule": Database["public"]['Enums']["pay_schedule"],"pay_weekday": number | null,"payment_terms_days": number | null,"rate": number | null,"user_id": string
@@ -80,14 +94,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "accountant_cost": number,"created_at": string,"dependents": number,"id": string,"inss_plan": string,"locale": string,"onboarded_at": string | null,"plan": Database["public"]['Enums']["plan"],"pro_until": string | null,"tax_mode": string,"timezone": string,"work_type": Database["public"]['Enums']["work_type"] | null
+                    "accountant_cost": number,"created_at": string,"dependents": number,"email_reminders": boolean,"email_weekly": boolean,"emergency_months": number,"emergency_pct": number,"id": string,"inss_plan": string,"locale": string,"onboarded_at": string | null,"plan": Database["public"]['Enums']["plan"],"pro_until": string | null,"reserve_13th": boolean,"reserve_vacation": boolean,"salary_target": number | null,"tax_mode": string,"timezone": string,"work_type": Database["public"]['Enums']["work_type"] | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "accountant_cost"?: number,"created_at"?: string,"dependents"?: number,"id": string,"inss_plan"?: string,"locale"?: string,"onboarded_at"?: string | null,"plan"?: Database["public"]['Enums']["plan"],"pro_until"?: string | null,"tax_mode"?: string,"timezone"?: string,"work_type"?: Database["public"]['Enums']["work_type"] | null
+                    "accountant_cost"?: number,"created_at"?: string,"dependents"?: number,"email_reminders"?: boolean,"email_weekly"?: boolean,"emergency_months"?: number,"emergency_pct"?: number,"id": string,"inss_plan"?: string,"locale"?: string,"onboarded_at"?: string | null,"plan"?: Database["public"]['Enums']["plan"],"pro_until"?: string | null,"reserve_13th"?: boolean,"reserve_vacation"?: boolean,"salary_target"?: number | null,"tax_mode"?: string,"timezone"?: string,"work_type"?: Database["public"]['Enums']["work_type"] | null
                   }
                   Update: {
-                    "accountant_cost"?: number,"created_at"?: string,"dependents"?: number,"id"?: string,"inss_plan"?: string,"locale"?: string,"onboarded_at"?: string | null,"plan"?: Database["public"]['Enums']["plan"],"pro_until"?: string | null,"tax_mode"?: string,"timezone"?: string,"work_type"?: Database["public"]['Enums']["work_type"] | null
+                    "accountant_cost"?: number,"created_at"?: string,"dependents"?: number,"email_reminders"?: boolean,"email_weekly"?: boolean,"emergency_months"?: number,"emergency_pct"?: number,"id"?: string,"inss_plan"?: string,"locale"?: string,"onboarded_at"?: string | null,"plan"?: Database["public"]['Enums']["plan"],"pro_until"?: string | null,"reserve_13th"?: boolean,"reserve_vacation"?: boolean,"salary_target"?: number | null,"tax_mode"?: string,"timezone"?: string,"work_type"?: Database["public"]['Enums']["work_type"] | null
                   }
                   Relationships: [
                     

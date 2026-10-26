@@ -2,16 +2,18 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { type RunningEntry, Timer, TodayTotals, type TodayRow } from "@/components/app/Timer";
 import { TakeHomeCard } from "@/components/app/TakeHomeCard";
+import { LateAlerts } from "@/components/app/LateAlerts";
 import { TaxReminders } from "@/components/app/TaxReminders";
 import { Card, PageSkeleton } from "@/components/app/ui";
 import { categoryName, getAppDictionary } from "@/i18n/app";
+import { latePayments } from "@/lib/app/alerts";
 import { monthSummary, taxProfile } from "@/lib/app/money";
 import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { dueReminders, loadTaxYear } from "@/lib/app/taxes";
 import { dayKey, startOfDay } from "@/lib/app/time";
 
 async function Today() {
-  const { supabase, profile } = await requireUser();
+  const { supabase, profile, user } = await requireUser();
   const locale = profileLocale(profile);
   const t = getAppDictionary(locale);
   const tz = profile.timezone;
@@ -69,9 +71,10 @@ async function Today() {
 
   // This month's take-home: first for freelancers (what's left matters most to them), after the timer for others.
   const today = dayKey(new Date(serverNow), tz);
-  const [month, taxYear] = await Promise.all([
-    monthSummary(supabase, profile, Number(today.slice(0, 4)), Number(today.slice(5, 7))),
-    loadTaxYear(supabase, profile, Number(today.slice(0, 4)), today),
+  const [month, taxYear, late] = await Promise.all([
+    monthSummary(supabase, profile, user.id, Number(today.slice(0, 4)), Number(today.slice(5, 7))),
+    loadTaxYear(supabase, profile, user.id, Number(today.slice(0, 4)), today),
+    latePayments(supabase, user.id, tz, today),
   ]);
   const takeHome = (
     <TakeHomeCard
@@ -94,6 +97,7 @@ async function Today() {
       </div>
 
       <TaxReminders t={t} locale={locale} mode={taxYear.mode} reminders={dueReminders(taxYear, today)} current={taxYear.months.at(-1)} />
+      <LateAlerts t={t} locale={locale} alerts={late} />
 
       {freelancer && takeHome}
 

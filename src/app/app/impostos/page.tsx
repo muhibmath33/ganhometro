@@ -19,7 +19,7 @@ const STATUS_CLASS: Record<DueStatus, string> = {
 };
 
 async function Taxes({ searchParams }: { searchParams: PageProps<"/app/impostos">["searchParams"] }) {
-  const { supabase, profile } = await requireUser();
+  const { supabase, profile, user } = await requireUser();
   const locale = profileLocale(profile);
   const t = getAppDictionary(locale);
   const tx = t.taxes;
@@ -28,7 +28,7 @@ async function Taxes({ searchParams }: { searchParams: PageProps<"/app/impostos"
   const params = await searchParams;
   const asked = Number(params.ano);
   const year = Number.isInteger(asked) && asked >= 2026 && asked <= thisYear ? asked : thisYear;
-  const data = await loadTaxYear(supabase, profile, year, today);
+  const data = await loadTaxYear(supabase, profile, user.id, year, today);
   const mode = data.mode;
   const monthName = new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" });
   // Months with income, something to pay or a carried balance; the current month always.

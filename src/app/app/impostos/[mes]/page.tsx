@@ -22,7 +22,7 @@ const editable = (n: number | null | undefined, locale: string) => (n === null |
 
 async function TaxMonth({ params }: { params: PageProps<"/app/impostos/[mes]">["params"] }) {
   const { mes } = await params;
-  const { supabase, profile } = await requireUser();
+  const { supabase, profile, user } = await requireUser();
   const locale = profileLocale(profile);
   const t = getAppDictionary(locale);
   const m = t.taxMonth;
@@ -33,7 +33,7 @@ async function TaxMonth({ params }: { params: PageProps<"/app/impostos/[mes]">["
 
   const [first, last] = monthBounds(year, month);
   const [data, { data: paymentRows }, { data: detail }] = await Promise.all([
-    loadTaxYear(supabase, profile, year, today),
+    loadTaxYear(supabase, profile, user.id, year, today),
     supabase.from("payments").select("id, amount, currency, received_on, income_sources(name)").gte("received_on", first).lte("received_on", last).order("received_on"),
     supabase.from("tax_months").select("*").eq("month", first).maybeSingle(),
   ]);

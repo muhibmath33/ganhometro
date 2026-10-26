@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { signOut } from "@/app/app/actions";
+import { EmailSettingsForm, ReservesSettingsForm } from "@/components/app/MoneySettingsForms";
 import { SettingsForm } from "@/components/app/SettingsForm";
 import { TaxSettingsForm } from "@/components/app/TaxSettingsForm";
 import { Card, PageSkeleton } from "@/components/app/ui";
@@ -40,6 +41,29 @@ async function Settings() {
             accountantCost: Number(profile.accountant_cost),
           }}
         />
+      </Card>
+      <Card className="max-w-xl">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="m-0 text-[17px] font-bold">{t.settings.reservesTitle}</h2>
+          <p className="m-0 text-[14px] text-ink-soft">{t.settings.reservesLead}</p>
+        </div>
+        <ReservesSettingsForm
+          t={t}
+          values={{
+            salary: profile.salary_target === null ? "" : String(Number(profile.salary_target)).replace(".", locale === "en" ? "." : ","),
+            thirteenth: profile.reserve_13th,
+            vacation: profile.reserve_vacation,
+            emergencyPct: String(Number(profile.emergency_pct)),
+            emergencyMonths: String(profile.emergency_months),
+          }}
+        />
+      </Card>
+      <Card className="max-w-xl">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="m-0 text-[17px] font-bold">{t.settings.emailsTitle}</h2>
+          <p className="m-0 text-[14px] text-ink-soft">{t.settings.emailsLead}</p>
+        </div>
+        <EmailSettingsForm t={t} values={{ reminders: profile.email_reminders, weekly: profile.email_weekly }} />
       </Card>
       <Card className="max-w-xl">
         <SettingsForm t={t} locale={locale} work={profile.work_type} />

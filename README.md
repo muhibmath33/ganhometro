@@ -12,7 +12,9 @@ the timer (paid/unpaid, categories), the time log with manual entries, the dashb
 payments (quick add, or import a Wise, Payoneer or Upwork CSV statement), "possível diferença" on short payments,
 the month's take-home ("Quanto sobra") as an individual or a company, the tax settings, and Taxes: the carnê-leão
 month by month (or the company's DAS), each payment's conversion, deductions, "paid", reminders, the R$ 5 mil warning
-and the PF-or-CNPJ comparison over the last 12 months.
+and the PF-or-CNPJ comparison over the last 12 months. Also: reserves (a salary to pay yourself, plus 13º, vacation and
+an emergency fund), late-payment alerts, and emails (DARF/DAS reminders 5 days and 1 day before, late payments, a Monday
+summary).
 
 ## Run locally
 
@@ -45,8 +47,11 @@ server store exchange rates), add any long random `CRON_SECRET`, then restart `n
 - `npx supabase db reset` wipes the local database and re-applies the migrations.
 - After changing a migration, regenerate the types:
   `npx supabase gen types typescript --local > src/lib/supabase/database.types.ts`.
-- Exchange rates fill in by themselves when a page needs them. To run the daily job by hand:
-  `curl -H "Authorization: Bearer <CRON_SECRET>" http://localhost:3000/api/cron/daily`.
+- Exchange rates fill in by themselves when a page needs them. To run the jobs by hand:
+  `curl -H "Authorization: Bearer <CRON_SECRET>" http://localhost:3000/api/cron/daily` (rates, reminders, late
+  payments) and `…/api/cron/weekly` (the Monday summary).
+- App emails go to the same local inbox when `.env.local` has `MAILPIT_URL=http://127.0.0.1:54324`. Each email is
+  logged in `email_log`, so a job run twice doesn't send it twice.
 - `npx supabase stop` shuts it down. Changes to `supabase/config.toml` or the email template only apply after a stop and start.
 
 ## What's where
@@ -75,9 +80,11 @@ server store exchange rates), add any long random `CRON_SECRET`, then restart `n
 | `src/app/app/impostos/` | Taxes: the year, and each month (`2026-10`) with conversions, deductions and "paid" |
 | `src/app/app/actions.ts` | Every form in the app (server actions) |
 | `src/components/app/`, `src/i18n/app.ts` | App screens' building blocks, and all app text (PT/EN) |
-| `src/lib/app/` | Signed-in user and profile (`session.ts`), form rules (`sources.ts`, `entries.ts`, `payments.ts`), time zones (`time.ts`), statement reader (`statementImport.ts`), payments in reais for pages (`money.ts`), the Taxes screens' data and reminders (`taxes.ts`) |
-| `src/lib/money/` | Real rate (`realRate.ts`), money received, "possível diferença" and take-home (`received.ts`), conversion rules (`convert.ts`), taxes (`tax.ts`), Banco Central rates (`ptax.ts`, `rates.ts`); all with tests except the network parts |
-| `src/app/api/cron/daily`, `vercel.json` | Daily job (weekdays, 17:30 UTC) that stores the latest PTAX rates |
+| `src/lib/app/` | Signed-in user and profile (`session.ts`), form rules (`sources.ts`, `entries.ts`, `payments.ts`), time zones (`time.ts`), statement reader (`statementImport.ts`), payments in reais for pages (`money.ts`), the Taxes screens' data and reminders (`taxes.ts`), late payments (`alerts.ts`) |
+| `src/lib/money/` | Real rate (`realRate.ts`), money received, "possível diferença" and take-home (`received.ts`), reserves (`reserves.ts`), paydays and late payments (`paydays.ts`), conversion rules (`convert.ts`), taxes (`tax.ts`), Banco Central rates (`ptax.ts`, `rates.ts`); all with tests except the network parts |
+| `src/app/api/cron/`, `vercel.json` | Daily job (17:30 UTC: rates, then reminder and late-payment emails) and weekly job (Mondays 11:00 UTC: summary) |
+| `src/lib/jobs/notifications.ts` | What the jobs send and to whom (each email once, respecting the person's email settings) |
+| `src/lib/email/`, `src/i18n/emails.ts` | Sending (Resend, or the local inbox), the email templates and their text (PT/EN) |
 | `src/lib/supabase/admin.ts` | Server-only client with the secret key, for the shared rates table |
 | `src/lib/supabase/`, `src/proxy.ts` | Supabase client, generated database types, session refresh for `/app` |
 | `supabase/migrations/` | Database tables, security rules (each user sees only their own rows), the Free plan limit, and no overlapping time entries |
@@ -157,7 +164,8 @@ Not needed for the waitlist. Xinning owns the account.
    3. **Authentication → Rate Limits:** raise "emails sent per hour" (for example to 100).
 6. Copy the **Project URL**, **Publishable key** and **Secret key** (Project Settings → API) into Vercel as
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`. Add a long random
-   `CRON_SECRET` too: Vercel Cron sends it when it runs the daily job in `vercel.json`. Then redeploy.
+   `CRON_SECRET` too: Vercel Cron sends it when it runs the jobs in `vercel.json`. For the app's own emails, add
+   `RESEND_API_KEY` (the same Resend account as step 5) and `EMAIL_FROM`. Then redeploy.
 
 ## Admin page (`/admin`)
 
@@ -207,6 +215,7 @@ Rules and rates live at the top of `build_carne_leao.py`, which makes a 2027 ver
 - [ ] Submit a real signup on the live site and confirm it lands in the Brevo list with the attributes filled.
 - [ ] Open the live URL with `?utm_source=teste&utm_campaign=teste`, sign up, and check the UTM attributes in Brevo.
 - [ ] Share the URL on WhatsApp and check the preview image.
+- [ ] With Resend set up, check that a reminder and the Monday summary arrive in Gmail and Outlook, and not in spam.
 - [ ] After the accountant review of the spreadsheet, set `NEXT_PUBLIC_BONUS_READY=true` and redeploy.
 - [ ] Adding Meta or Google ad pixels later requires a cookie consent banner and an update to the privacy policy.
 
