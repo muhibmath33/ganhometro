@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import type { Dictionary, Locale } from "@/i18n";
+import { routes } from "@/i18n/config";
 import { track } from "@/lib/analytics";
 import { site } from "@/lib/site";
 import { getUtm } from "@/lib/utm";
@@ -9,39 +11,45 @@ import { CheckIcon, DownloadIcon } from "./icons";
 
 type Props = {
   source: "hero" | "final";
+  locale: Locale;
+  t: Dictionary["form"];
   buttonLabel: string;
   successText: string;
   centered?: boolean;
 };
 
-const GENERIC_ERROR = "Não foi possível enviar agora. Tente de novo em instantes.";
+type ErrorCode = keyof Dictionary["form"]["errors"];
 
-export function WaitlistForm({ source, buttonLabel, successText, centered = false }: Props) {
+export function WaitlistForm({ source, locale, t, buttonLabel, successText, centered = false }: Props) {
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
   const [website, setWebsite] = useState(""); // honeypot
   const [status, setStatus] = useState<"idle" | "sending" | "done">("idle");
   const [doubleOptIn, setDoubleOptIn] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<ErrorCode | null>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError("");
+    setError(null);
     setStatus("sending");
     try {
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, consent, source, website, utm: getUtm() }),
+        body: JSON.stringify({ email, consent, source, locale, website, utm: getUtm() }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || GENERIC_ERROR);
+      if (!res.ok || !data.ok) {
+        setStatus("idle");
+        setError(data.code in t.errors ? data.code : "generic");
+        return;
+      }
       setDoubleOptIn(Boolean(data.doubleOptIn));
       setStatus("done");
-      track("Signup", { source });
-    } catch (err) {
+      track("Signup", { source, locale });
+    } catch {
       setStatus("idle");
-      setError(err instanceof Error && err.message ? err.message : GENERIC_ERROR);
+      setError("generic");
     }
   }
 
@@ -53,19 +61,17 @@ export function WaitlistForm({ source, buttonLabel, successText, centered = fals
           className="flex min-h-[52px] items-center gap-2.5 rounded-[10px] bg-brand-tint px-4 text-left text-[16px] font-bold text-brand"
         >
           <CheckIcon strokeWidth={2.4} className="shrink-0" />
-          {doubleOptIn
-            ? "Quase lá! Confirme sua inscrição no e-mail que acabamos de enviar."
-            : successText}
+          {doubleOptIn ? t.doubleOptIn : successText}
         </div>
         {site.bonus.ready && (
           <a
             href={site.bonus.href}
             download
-            onClick={() => track("Bonus download", { source })}
+            onClick={() => track("Bonus download", { source, locale })}
             className="flex min-h-12 items-center gap-2.5 rounded-[10px] border border-brand bg-white px-4 py-2.5 text-left text-[15px] font-bold text-brand no-underline"
           >
             <DownloadIcon strokeWidth={2.2} className="shrink-0" />
-            {site.bonus.label}
+            {t.bonus}
           </a>
         )}
       </div>
@@ -82,7 +88,7 @@ export function WaitlistForm({ source, buttonLabel, successText, centered = fals
     >
       <div className={`flex flex-wrap gap-2.5 ${centered ? "justify-center" : ""}`}>
         <label htmlFor={emailId} className="sr-only">
-          Seu e-mail
+          {t.emailLabel}
         </label>
         <input
           id={emailId}
@@ -90,7 +96,7 @@ export function WaitlistForm({ source, buttonLabel, successText, centered = fals
           type="email"
           required
           autoComplete="email"
-          placeholder="seu@email.com"
+          placeholder={t.placeholder}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="min-h-[52px] flex-[1_1_260px] rounded-[10px] border border-field bg-white px-4 font-sans text-[16px] font-medium text-ink"
@@ -100,7 +106,7 @@ export function WaitlistForm({ source, buttonLabel, successText, centered = fals
           disabled={status === "sending"}
           className="min-h-[52px] flex-none cursor-pointer rounded-[10px] border-0 bg-brand px-[22px] font-sans text-[16px] font-bold text-white disabled:cursor-wait disabled:opacity-70"
         >
-          {status === "sending" ? "Enviando…" : buttonLabel}
+          {status === "sending" ? t.sending : buttonLabel}
         </button>
       </div>
       <label
@@ -117,14 +123,16 @@ export function WaitlistForm({ source, buttonLabel, successText, centered = fals
           className="mt-px size-4 shrink-0 cursor-pointer accent-brand"
         />
         <span>
-          Aceito receber e-mails do Ganhômetro sobre o acesso antecipado e a oferta de
-          fundador. Li a <Link href="/privacidade" className="underline">Política de Privacidade</Link> e
-          posso cancelar quando quiser.
+          {t.consentBefore}
+          <Link href={routes.privacy[locale]} className="underline">
+            {t.consentLink}
+          </Link>
+          {t.consentAfter}
         </span>
       </label>
       {/* Honeypot: hidden from people, often filled by bots. */}
       <div aria-hidden="true" className="absolute -left-[9999px] size-px overflow-hidden">
-        <label htmlFor={`website-${source}`}>Não preencha este campo</label>
+        <label htmlFor={`website-${source}`}>{t.honeypot}</label>
         <input
           id={`website-${source}`}
           name="website"
@@ -137,7 +145,7 @@ export function WaitlistForm({ source, buttonLabel, successText, centered = fals
       </div>
       {error && (
         <p role="alert" className="m-0 text-left text-[14px] font-semibold text-amber-ink">
-          {error}
+          {t.errors[error]}
         </p>
       )}
     </form>

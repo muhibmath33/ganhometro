@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
 import { UtmCapture } from "@/components/UtmCapture";
+import { getDictionary } from "@/i18n";
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -15,15 +16,18 @@ const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
 });
 
+// Portuguese is the default language; app/en/layout.tsx overrides these for English pages.
+const meta = getDictionary("pt-BR").meta;
+
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
-  title: site.title,
-  description: site.description,
+  title: meta.title,
+  description: meta.description,
   openGraph: {
-    title: site.title,
-    description: site.description,
+    title: meta.title,
+    description: meta.description,
     siteName: site.name,
-    locale: "pt_BR",
+    locale: meta.ogLocale,
     type: "website",
   },
 };

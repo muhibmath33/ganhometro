@@ -1,0 +1,192 @@
+// English version of the site. Same shape as pt.ts (the Dictionary type enforces it).
+import type { Dictionary } from "./pt";
+
+const en: Dictionary = {
+  meta: {
+    title: "Ganhômetro — what each platform really pays",
+    description:
+      "Track paid and unpaid time (guidelines, tests, waiting), see your real hourly rate in reais and know when a payment is late. Carnê-leão (Brazilian income tax) estimate included.",
+    ogLocale: "en_US",
+    ogTitle: "Find out what each platform really pays, per hour, in reais.",
+    ogTagline: "For AI trainers · Free early access",
+  },
+  nav: {
+    label: "Main",
+    calculator: "Calculator",
+    how: "How it works",
+    features: "Features",
+    privacy: "Privacy",
+    faq: "FAQ",
+    cta: "Join the waitlist",
+    language: "Language",
+  },
+  hero: {
+    badge: "For AI trainers on Outlier, DataAnnotation, Mercor and more",
+    title: "Find out what each platform really pays, per hour, in reais.",
+    lead: "Track paid and unpaid time (guidelines, tests, waiting), see your real hourly rate and know when a payment is late. Carnê-leão (Brazilian income tax) estimate included.",
+    button: "Get early access",
+    success: "Done! We'll email you when access opens.",
+    note: "Free during early access. We never store the content of your tasks.",
+    freelancers: "Also works for freelancers paid in dollars, like developers, designers and translators.",
+  },
+  example: {
+    title: "This week",
+    caption: "Example · illustrative rate {rate}",
+    platformA: "Platform A",
+    platformB: "Platform B",
+    advertises: "advertises {rate}",
+    detail: "{paid}h paid · {unpaid}h {unpaidWord} · US$ {received}",
+    unpaidOne: "unpaid",
+    unpaidMany: "unpaid",
+    legendPaid: "Paid time",
+    legendUnpaid: "Unpaid time",
+    verdict: "Platform A advertises more, but B actually paid more per hour.",
+  },
+  problem: {
+    title: "The advertised rate isn't what you earn.",
+    lead: "Platforms pay for task time. Everything else is on you, and almost nobody measures it.",
+    items: [
+      { title: "Guidelines and tests", text: "Hours reading instructions and taking assessments before the first paid task." },
+      { title: "Waiting for tasks", text: "Refreshing an empty queue, switching platforms, waiting for news." },
+      { title: "Rework", text: "Fixing tasks after review, or work that never gets paid." },
+      { title: "Late payments", text: "Each platform pays on a different day. It's hard to notice when something didn't arrive." },
+    ],
+  },
+  calculator: {
+    badge: "Free, no sign-up",
+    title: "Real hourly rate calculator",
+    lead: "Enter one week's numbers for one platform and see what it really paid.",
+    fields: {
+      listed: "Advertised rate (US$/h)",
+      received: "Amount received (US$)",
+      paid: "Paid hours",
+      unpaid: "Unpaid hours",
+      rate: "Dollar rate (R$)",
+    },
+    defaultRate: "5.10",
+    hint: "Unpaid hours: guidelines, tests, waiting for tasks and rework. The starting values are just an example.",
+    realTitle: "Real hourly rate",
+    gapTitle: "Compared to the advertised rate",
+    unpaidTitle: "Unpaid time",
+    messages: {
+      gapLess: "{n}% less than advertised",
+      gapMore: "{n}% more than advertised",
+      gapSame: "Same as advertised",
+      unpaidShare: "{n}% of your hours were unpaid",
+    },
+  },
+  how: {
+    title: "How it works",
+    steps: [
+      { title: "Add your platforms", text: "Enter the advertised rate and payday for each one. Takes about five minutes." },
+      { title: "Track your time", text: "One tap to start. Mark it as a paid task or unpaid time, like guidelines and waiting." },
+      { title: "See your real earnings", text: "Log your payments and see what each platform really pays, in reais, and when something was late." },
+    ],
+  },
+  features: {
+    title: "Everything in one place",
+    soon: "Soon",
+    items: [
+      { title: "Real rate per platform and project", text: "Money received divided by all hours, paid or not. Compare platforms side by side.", soon: false },
+      { title: "Paid vs. unpaid time", text: "Tag guidelines, tests, waiting and rework, and see where your time goes.", soon: false },
+      { title: "Underpayment detector", text: "Compares your logged paid hours with the amount received and shows possible differences for you to check on the platform's dashboard.", soon: false },
+      { title: "Late payment alert", text: "Set each platform's payday and know right away when something is late.", soon: false },
+      { title: "What you lose on exchange and fees", text: "Compare the dollars you received with the reais that arrived and see the real cost of each payment service.", soon: true },
+      { title: "R$ 5k alert", text: "A heads-up before you pass the monthly tax-free limit, with the carnê-leão estimate you'll pay.", soon: false },
+      { title: "Income drop alert", text: "Warns you when a platform pays much less than usual or when almost all your income depends on one.", soon: true },
+      { title: "Ready-made dispute message", text: "A PDF record of your hours and a message in English to send to the platform's support.", soon: false },
+      { title: "INSS up to date", text: "A reminder for the monthly INSS (Brazilian social security) payment and a comparison of contribution plans, so you stay covered.", soon: true },
+      { title: "Automatic extension", text: "The timer starts and pauses on its own when you open your work pages. It only measures time.", soon: true },
+    ],
+  },
+  tax: {
+    badge: "Bonus for people paid in dollars",
+    title: "What about the carnê-leão? It's included.",
+    text: "Since you already log your payments, Ganhômetro converts each one to reais using the Receita Federal's official rule, shows the month's estimate under the 2026 rules and reminds you before the deadline.",
+    note: "Estimate, not accounting advice. If in doubt, ask an accountant.",
+    points: [
+      "Conversion at the correct Central Bank buying rate",
+      "Monthly estimate: tax-free up to R$ 5k, partial reduction up to R$ 7,350",
+      "Reminder before the last business day of the following month",
+    ],
+  },
+  privacy: {
+    title: "Only time and money. Never your tasks.",
+    text: "AI training work is often confidential. Ganhômetro was built so you never have to share it.",
+    points: [
+      "We don't store task content, prompts, answers or screenshots.",
+      "We never ask for platform logins, or for gov.br or bank passwords.",
+      "Export or delete your data whenever you want, as the LGPD (Brazil's data protection law) guarantees.",
+      "Your earnings are private. Nothing is shared without your permission.",
+    ],
+  },
+  plans: {
+    title: "Plans",
+    free: {
+      name: "Free",
+      price: "R$ 0",
+      items: ["Timer with paid and unpaid time", "Up to 2 platforms", "Real hourly rate in reais", "Weekly summary"],
+    },
+    pro: {
+      name: "Pro",
+      badge: "Discount for the waitlist",
+      price: "R$ 14.90",
+      perMonth: " / month",
+      items: [
+        "Unlimited platforms, per-project rates and full history",
+        "Underpayment detector and late payment alert",
+        "What you lose on exchange and fees (soon)",
+        "Alert before you pass R$ 5k, carnê-leão estimate and reminders",
+        "Income drop alert (soon)",
+        "PDF record and dispute message in English",
+        "INSS reminders and automatic extension (soon)",
+      ],
+    },
+  },
+  faq: {
+    title: "FAQ",
+    items: [
+      { q: "Is Ganhômetro affiliated with any platform?", a: "No. It's independent and has no connection to any AI training or freelance platform. You log your own time and payments." },
+      { q: "Do you access my account or my tasks?", a: "No. We only store the time you log and the payments you enter. We never ask for platform logins." },
+      { q: "Is the extension allowed by the platforms?", a: "It only measures time and identifies which site is open. It doesn't click, refresh pages or read tasks. Even so, check each platform's terms." },
+      { q: "Which platforms does it work with?", a: "Any of them. You add the platforms you use, with the advertised rate and payday." },
+      { q: "Is the carnê-leão estimate official?", a: "It's an estimate based on the published rules, reviewed by an accountant before launch. You generate and pay the DARF (the tax payment slip) yourself." },
+      { q: "How much will it cost?", a: "There will be a free plan. Pro unlocks unlimited platforms, alerts, the PDF record and the carnê-leão, with a discount for people on the waitlist." },
+    ],
+  },
+  final: {
+    title: "Find out what your time is really worth.",
+    text: "Join the waitlist for free early access and a founder discount.",
+    button: "Join the waitlist",
+    success: "You're on the list. Thank you!",
+  },
+  form: {
+    emailLabel: "Your email",
+    placeholder: "you@email.com",
+    sending: "Sending…",
+    consentBefore: "I agree to receive emails from Ganhômetro about early access and the founding offer. I have read the ",
+    consentLink: "Privacy Policy",
+    consentAfter: " and can unsubscribe at any time.",
+    honeypot: "Leave this field empty",
+    doubleOptIn: "Almost there! Confirm your signup in the email we just sent.",
+    bonus: "Download the free spreadsheet: Carnê-leão 2026 for people paid in dollars (in Portuguese)",
+    errors: {
+      invalid_email: "Enter a valid email address.",
+      consent_required: "Tick the consent box to join the waitlist.",
+      generic: "Couldn't send right now. Please try again in a moment.",
+    },
+  },
+  footer: {
+    copyright:
+      "© 2026 Ganhômetro. We are not affiliated with any platform or with the Receita Federal. Tax estimates are not a substitute for accounting advice.",
+    privacy: "Privacy",
+    terms: "Terms",
+    contact: "Contact: {email}",
+  },
+  legal: {
+    updated: "Last updated: {date}",
+    date: "October 26, 2026",
+  },
+};
+
+export default en;

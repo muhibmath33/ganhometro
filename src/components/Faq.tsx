@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { faqs } from "@/lib/content";
+import type { Dictionary } from "@/i18n";
 
-export function Faq() {
+export function Faq({ items }: { items: Dictionary["faq"]["items"] }) {
   const [open, setOpen] = useState(0);
 
   return (
     <>
-      {faqs.map((f, i) => {
+      {items.map((f, i) => {
         const isOpen = open === i;
         return (
           <div key={f.q} className="rounded-xl border border-line">

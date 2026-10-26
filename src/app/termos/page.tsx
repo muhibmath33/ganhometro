@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage } from "@/components/LegalPage";
+import { alternates } from "@/i18n";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Termos de Uso — Ganhômetro",
   description: "Termos de uso do site e da lista de acesso antecipado do Ganhômetro.",
+  alternates: alternates("terms", "pt-BR"),
 };
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Termos de Uso">
+    <LegalPage locale="pt-BR" page="terms" title="Termos de Uso">
       <p>
         Estes termos valem para o site do Ganhômetro e para a lista de acesso
         antecipado. Ao usar o site, você concorda com eles.

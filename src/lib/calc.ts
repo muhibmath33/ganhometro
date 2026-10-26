@@ -1,4 +1,14 @@
 // Calculator logic ported 1:1 from the Main.dc.html design (Handoff §4).
+// Only the output text and number format depend on the language.
+
+import { fill, type Locale } from "@/i18n/config";
+
+export type CalcMessages = {
+  gapLess: string;
+  gapMore: string;
+  gapSame: string;
+  unpaidShare: string;
+};
 
 export type CalcInput = {
   listed: string;
@@ -27,19 +37,17 @@ export function parseNumber(s: string): number {
   return isNaN(n) ? 0 : n;
 }
 
-// "R$ 1.234,56"
-export function formatMoney(prefix: string, n: number): string {
-  return (
-    prefix +
-    " " +
-    n
-      .toFixed(2)
-      .replace(".", ",")
-      .replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-  );
+// "R$ 1.234,56" (pt-BR) or "R$ 1,234.56" (en)
+export function formatMoney(prefix: string, n: number, locale: Locale = "pt-BR"): string {
+  const fixed = n.toFixed(2);
+  const number =
+    locale === "en"
+      ? fixed.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+      : fixed.replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return prefix + " " + number;
 }
 
-export function calculate(input: CalcInput): CalcResult {
+export function calculate(input: CalcInput, messages: CalcMessages, locale: Locale = "pt-BR"): CalcResult {
   const listed = parseNumber(input.listed);
   const received = parseNumber(input.received);
   const paid = parseNumber(input.paid);
@@ -55,19 +63,17 @@ export function calculate(input: CalcInput): CalcResult {
     const pct = Math.round((1 - realUsd / listed) * 100);
     gapText =
       pct > 0
-        ? pct + "% a menos que o anunciado"
+        ? fill(messages.gapLess, { n: pct })
         : pct < 0
-          ? Math.abs(pct) + "% a mais que o anunciado"
-          : "Igual ao anunciado";
+          ? fill(messages.gapMore, { n: Math.abs(pct) })
+          : messages.gapSame;
   }
   const unpaidShare =
-    hours > 0
-      ? Math.round((unpaid / hours) * 100) + "% das suas horas não foram pagas"
-      : "—";
+    hours > 0 ? fill(messages.unpaidShare, { n: Math.round((unpaid / hours) * 100) }) : "—";
 
   return {
-    realBrl: formatMoney("R$", realBrl) + "/h",
-    realUsd: formatMoney("US$", realUsd) + "/h",
+    realBrl: formatMoney("R$", realBrl, locale) + "/h",
+    realUsd: formatMoney("US$", realUsd, locale) + "/h",
     gapText,
     unpaidShare,
   };

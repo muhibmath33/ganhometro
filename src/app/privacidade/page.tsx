@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
+import { alternates } from "@/i18n";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Política de Privacidade — Ganhômetro",
   description: "Como o Ganhômetro trata seus dados pessoais, conforme a LGPD.",
+  alternates: alternates("privacy", "pt-BR"),
 };
 
 export default function PrivacyPage() {
   const email = <a href={`mailto:${site.contactEmail}`}>{site.contactEmail}</a>;
   return (
-    <LegalPage title="Política de Privacidade">
+    <LegalPage locale="pt-BR" page="privacy" title="Política de Privacidade">
       <p>
         Esta política explica como o Ganhômetro trata os seus dados pessoais neste site
         e na lista de acesso antecipado, de acordo com a Lei Geral de Proteção de Dados
@@ -31,7 +33,7 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Registro do consentimento</strong>: data, hora e o formulário em que
-          você aceitou receber nossos e-mails.
+          você aceitou receber nossos e-mails, e o idioma da página.
         </li>
         <li>
           <strong>Origem da visita</strong>: os parâmetros de campanha (UTM) do link que

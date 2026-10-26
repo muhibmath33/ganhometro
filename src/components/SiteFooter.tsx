@@ -1,23 +1,22 @@
 import Link from "next/link";
+import { fill, getDictionary, routes, type Locale } from "@/i18n";
 import { site } from "@/lib/site";
 
-export function SiteFooter() {
+export function SiteFooter({ locale }: { locale: Locale }) {
+  const t = getDictionary(locale).footer;
   return (
     <footer className="border-t border-line bg-white">
       <div className="mx-auto flex max-w-[1120px] flex-wrap justify-between gap-3 p-6 text-[13px] leading-[1.5] text-muted">
-        <span>
-          © 2026 Ganhômetro. Não somos ligados a nenhuma plataforma nem à Receita
-          Federal. Estimativas de imposto não substituem orientação contábil.
-        </span>
+        <span>{t.copyright}</span>
         <div className="flex flex-wrap gap-4">
-          <Link href="/privacidade" className="underline">
-            Privacidade
+          <Link href={routes.privacy[locale]} className="underline">
+            {t.privacy}
           </Link>
-          <Link href="/termos" className="underline">
-            Termos
+          <Link href={routes.terms[locale]} className="underline">
+            {t.terms}
           </Link>
           <a href={`mailto:${site.contactEmail}`} className="underline">
-            Contato: {site.contactEmail}
+            {fill(t.contact, { email: site.contactEmail })}
           </a>
         </div>
       </div>
