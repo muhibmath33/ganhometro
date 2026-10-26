@@ -15,6 +15,8 @@ const text = (value: FormDataEntryValue | null) => (typeof value === "string" ? 
 
 export type PaymentFields = {
   source_id: string;
+  project_id: string | null;
+  invoice_id: string | null;
   amount: number;
   currency: string;
   received_on: string;
@@ -50,6 +52,8 @@ export function parsePaymentForm(form: FormData, today: string): { data: Payment
   return {
     data: {
       source_id: sourceId,
+      project_id: text(form.get("project_id")) || null,
+      invoice_id: text(form.get("invoice_id")) || null,
       amount: Math.round(amount * 100) / 100,
       currency: (CURRENCIES as readonly string[]).includes(currency) ? currency : "USD",
       received_on: receivedOn,

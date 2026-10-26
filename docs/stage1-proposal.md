@@ -170,8 +170,8 @@ Sprints of about one working session each. Every sprint is tested end to end (br
 | 3 | **Payments** (quick add + CSV import from Wise, Payoneer, Upwork), fees per payment, PTAX rates table and daily job; **Quanto sobra**; real rate from money received; underpayment check (3) | ✅ Done |
 | 4 | **Taxes:** PF carnê-leão from receipts, DARF reminders; CNPJ estimate (DAS on exports, pro-labore); PF-or-CNPJ monitor (5). Accountant review starts here. | ✅ Done (in-app reminders; email in sprint 5) |
 | 5 | **Reservas** and "pay yourself a salary"; late-payment alerts (4); Resend email (incl. DARF reminders 5 and 1 day before); weekly summary | ✅ Done |
-| 6 | Projects (hourly or fixed price), monthly retainers, time without a client; **invoices** with due dates, partial payments and money owed | Next |
-| 7 | **Documents:** income report, DECORE pack, invoice and timesheet in English, payment reminder, dispute pack (6) | |
+| 6 | Projects (hourly or fixed price), monthly retainers, time without a client; **invoices** with due dates, partial payments and money owed | ✅ Done |
+| 7 | **Documents:** income report, DECORE pack, invoice and timesheet in English, payment reminder, dispute pack (6) | Next |
 | 8 | Exchange and fee loss audit; import from Toggl and Clockify; running timer in the tab title | |
 | 9 | Plans and checkout (Mercado Pago, card + Pix), webhooks, Pro limits applied everywhere | |
 | 10 | Admin area with roles and audit log; data export and account deletion; deductions; install as an app; QA on real phones | |

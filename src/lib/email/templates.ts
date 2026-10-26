@@ -62,6 +62,24 @@ export function latePaymentEmail(locale: Locale, to: string, alert: LateAlert, f
   };
 }
 
+export function overdueInvoiceEmail(
+  locale: Locale,
+  to: string,
+  i: { id: string; number: string; client: string; amount: string; balance: string; due: string },
+): Email {
+  const d = getEmailDictionary(locale).invoice;
+  const subject = fill(d.subject, { number: i.number, client: i.client });
+  return {
+    to,
+    subject,
+    ...layout(locale, {
+      title: subject,
+      paragraphs: [fill(d.body, i), d.next],
+      button: { label: d.button, path: `/app/faturas/${i.id}` },
+    }),
+  };
+}
+
 export type WeeklySummary = {
   from: string;
   to: string;

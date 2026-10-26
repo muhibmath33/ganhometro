@@ -3,15 +3,27 @@
 import { useActionState, useState } from "react";
 import { type PaymentFormState, savePayment } from "@/app/app/actions";
 import type { AppDictionary } from "@/i18n/app";
+import { fill, type Locale } from "@/i18n/config";
 import { METHODS } from "@/lib/app/payments";
-import { CURRENCIES } from "@/lib/app/sources";
+import { CURRENCIES, currencySymbol } from "@/lib/app/sources";
+import { formatMoney } from "@/lib/calc";
 import { fieldInput, fieldLabel } from "./SourceFields";
 import { FormMessage, SubmitButton } from "./ui";
 
-export type PaymentSource = { id: string; name: string; currency: string };
+export type PaymentSource = {
+  id: string;
+  name: string;
+  currency: string;
+  projects: { id: string; name: string }[];
+  // Invoices still open (and the payment's own), with what's left to pay.
+  invoices: { id: string; number: string; currency: string; balance: number; projectId: string | null }[];
+};
 export type PaymentValues = {
   id?: string;
   sourceId: string;
+  projectId: string;
+  invoiceId: string;
+  back?: "invoice"; // logged from an invoice's page: go back there
   amount: string;
   currency: string;
   receivedOn: string;
@@ -25,23 +37,46 @@ const hint = "text-[12px] font-normal text-muted";
 const grid = "grid grid-cols-[repeat(auto-fit,minmax(min(180px,100%),1fr))] gap-4";
 
 // Log a payment (no id) or fix one (with id).
-export function PaymentForm({ t, sources, values, maxDate }: { t: AppDictionary; sources: PaymentSource[]; values: PaymentValues; maxDate: string }) {
+export function PaymentForm({
+  t,
+  locale,
+  sources,
+  values,
+  maxDate,
+}: {
+  t: AppDictionary;
+  locale: Locale;
+  sources: PaymentSource[];
+  values: PaymentValues;
+  maxDate: string;
+}) {
   const p = t.payment;
   const [state, action, pending] = useActionState<PaymentFormState, FormData>(savePayment, null);
+  const [sourceId, setSourceId] = useState(values.sourceId);
   const [currency, setCurrency] = useState(values.currency);
-  const [currencyTouched, setCurrencyTouched] = useState(Boolean(values.id));
+  const [currencyTouched, setCurrencyTouched] = useState(Boolean(values.id || values.invoiceId));
+  const [amount, setAmount] = useState(values.amount);
+  const [invoiceId, setInvoiceId] = useState(values.invoiceId);
+  const [projectId, setProjectId] = useState(values.projectId);
+  const source = sources.find((s) => s.id === sourceId);
+  const invoices = (source?.invoices ?? []).filter((i) => i.currency === currency);
+  const decimal = (n: number) => (locale === "en" ? n.toFixed(2) : n.toFixed(2).replace(".", ","));
 
   return (
     // Remount after a successful add (the server stamps each save) so the fields reset.
     <form key={state?.savedAt ?? "form"} action={action} className="flex flex-col gap-4">
       {values.id && <input type="hidden" name="id" value={values.id} />}
+      {values.back && <input type="hidden" name="back" value={values.back} />}
 
       <label className={fieldLabel}>
         {p.source}
         <select
           name="source_id"
-          defaultValue={values.sourceId}
+          value={sourceId}
           onChange={(e) => {
+            setSourceId(e.target.value);
+            setInvoiceId("");
+            setProjectId("");
             // The currency follows the source until the person picks one.
             if (!currencyTouched) setCurrency(sources.find((s) => s.id === e.target.value)?.currency ?? currency);
           }}
@@ -58,7 +93,15 @@ export function PaymentForm({ t, sources, values, maxDate }: { t: AppDictionary;
       <div className={grid}>
         <label className={fieldLabel}>
           {p.amount}
-          <input name="amount" inputMode="decimal" required defaultValue={values.amount} placeholder="1.500,00" className={`${fieldInput} font-mono`} />
+          <input
+            name="amount"
+            inputMode="decimal"
+            required
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="1.500,00"
+            className={`${fieldInput} font-mono`}
+          />
         </label>
         <label className={fieldLabel}>
           {p.currency}
@@ -68,6 +111,7 @@ export function PaymentForm({ t, sources, values, maxDate }: { t: AppDictionary;
             onChange={(e) => {
               setCurrency(e.target.value);
               setCurrencyTouched(true);
+              setInvoiceId("");
             }}
             className={fieldInput}
           >
@@ -80,6 +124,48 @@ export function PaymentForm({ t, sources, values, maxDate }: { t: AppDictionary;
         </label>
       </div>
       <span className={`${hint} -mt-2`}>{p.amountHint}</span>
+
+      {(invoices.length > 0 || (source?.projects.length ?? 0) > 0) && (
+        <div className={grid}>
+          {invoices.length > 0 && (
+            <label className={fieldLabel}>
+              {p.invoice}
+              <select
+                name="invoice_id"
+                value={invoiceId}
+                onChange={(e) => {
+                  const invoice = invoices.find((i) => i.id === e.target.value);
+                  setInvoiceId(e.target.value);
+                  // The invoice fills in what's left on it and its project.
+                  if (invoice && !amount) setAmount(decimal(invoice.balance));
+                  if (invoice?.projectId) setProjectId(invoice.projectId);
+                }}
+                className={fieldInput}
+              >
+                <option value="">{p.noInvoice}</option>
+                {invoices.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.number} · {fill(t.invoices.balance, { amount: formatMoney(currencySymbol(i.currency), i.balance, locale) })}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {(source?.projects.length ?? 0) > 0 && (
+            <label className={fieldLabel}>
+              {p.project}
+              <select name="project_id" value={projectId} onChange={(e) => setProjectId(e.target.value)} className={fieldInput}>
+                <option value="">{t.entry.noProject}</option>
+                {source!.projects.map((pr) => (
+                  <option key={pr.id} value={pr.id}>
+                    {pr.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+      )}
 
       <div className={grid}>
         <label className={fieldLabel}>

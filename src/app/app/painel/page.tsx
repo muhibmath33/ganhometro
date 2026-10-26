@@ -11,7 +11,7 @@ import { currencySymbol } from "@/lib/app/sources";
 import { addDays, dayKey, formatDuration, startOfDay } from "@/lib/app/time";
 import { formatMoney } from "@/lib/calc";
 import { latestPtax } from "@/lib/money/ptax";
-import { entryHours, summarize } from "@/lib/money/realRate";
+import { entryHours, projectRate, type RateProject, summarizeSource } from "@/lib/money/realRate";
 import { checkUnderpayment, periodShare, receivedSummary } from "@/lib/money/received";
 import { reserveHistory, suggestedSalary } from "@/lib/money/reserves";
 
@@ -40,7 +40,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
   const [{ data: paymentRows }, { data: firstPayment }] = await Promise.all([
     supabase
       .from("payments")
-      .select("source_id, amount, received_on, period_start, period_end")
+      .select("source_id, project_id, invoice_id, amount, received_on, period_start, period_end")
       .eq("user_id", user.id)
       .or(`period_end.gte.${fromDay},received_on.gte.${fromDay}`),
     supabase.from("payments").select("received_on").eq("user_id", user.id).order("received_on").limit(1),
@@ -58,11 +58,12 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
   // Hours from the earliest payment period too, so "possível diferença" sees all the work a payment covers.
   const entriesFrom = Math.min(from, ...payments.map((p) => startOfDay(p.period_start ?? p.received_on, tz).getTime()));
 
-  const [{ data: sourceRows }, { data: entryRows }, { data: categoryRows }] = await Promise.all([
+  const [{ data: sourceRows }, { data: projectRows }, { data: entryRows }, { data: categoryRows }] = await Promise.all([
     supabase.from("income_sources").select("id, name, pay_model, rate, currency, commission_pct, archived_at").order("created_at"),
+    supabase.from("projects").select("id, source_id, name, pay_model, rate, fixed_price, archived_at").order("created_at"),
     supabase
       .from("time_entries")
-      .select("source_id, kind, category_id, units, started_at, ended_at")
+      .select("source_id, project_id, kind, category_id, units, started_at, ended_at")
       .or(`ended_at.gte.${new Date(entriesFrom).toISOString()},ended_at.is.null`),
     supabase.from("categories").select("id, name, preset"),
   ]);
@@ -71,6 +72,29 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
   const entries = allEntries.filter((e) => !e.ended_at || Date.parse(e.ended_at) >= from);
   // Active sources, plus archived ones that still have hours in the period.
   const sources = (sourceRows ?? []).filter((s) => !s.archived_at || entries.some((e) => e.source_id === s.id));
+  // A fixed price is spread over every hour a project has taken, so those projects need all their hours
+  // and everything received for them.
+  const projectsAll = projectRows ?? [];
+  const fixedIds = projectsAll.filter((p) => p.pay_model === "fixed").map((p) => p.id);
+  const [{ data: fixedEntryRows }, { data: fixedPaymentRows }] = await Promise.all([
+    supabase.from("time_entries").select("project_id, kind, units, started_at, ended_at").in("project_id", fixedIds),
+    supabase.from("payments").select("project_id, amount").in("project_id", fixedIds),
+  ]);
+  const fixedEntries = fixedEntryRows ?? [];
+  const rateProjects = new Map<string, RateProject>(
+    projectsAll.map((p) => [
+      p.id,
+      {
+        id: p.id,
+        pay_model: p.pay_model === "hourly" || p.pay_model === "fixed" ? p.pay_model : null,
+        rate: p.rate === null ? null : Number(p.rate),
+        fixed_price: p.fixed_price === null ? null : Number(p.fixed_price),
+        lifetimeHours: fixedEntries.filter((e) => e.project_id === p.id).reduce((sum, e) => sum + entryHours(e, now), 0),
+      },
+    ]),
+  );
+  const receivedFor = (projectId: string) =>
+    (fixedPaymentRows ?? []).filter((p) => p.project_id === projectId).reduce((sum, p) => sum + Number(p.amount), 0);
   const currencies = [...new Set(sources.map((s) => s.currency))];
   const ptax = new Map(await Promise.all(currencies.map(async (c) => [c, await latestPtax(c)] as const)));
 
@@ -78,7 +102,8 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
     const rate = s.rate === null ? null : Number(s.rate);
     const rateSource = { pay_model: s.pay_model, rate, commission_pct: s.commission_pct === null ? null : Number(s.commission_pct) };
     const mine = entries.filter((e) => e.source_id === s.id);
-    const summary = summarize(rateSource, mine, now, from);
+    const sourceProjects = projectsAll.filter((p) => p.source_id === s.id).map((p) => rateProjects.get(p.id)!);
+    const summary = summarizeSource(rateSource, sourceProjects, mine, now, from);
     // With payments in the period, the real rate comes from the money received; otherwise it's an estimate.
     const sourcePayments = payments.filter((p) => p.source_id === s.id);
     const summaryFromPayments = sourcePayments.some((p) => periodShare(p, fromDay, today) > 0)
@@ -87,16 +112,40 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
     // A payment whose days have no logged hours can't give a rate; the estimate is more useful then.
     const received = summaryFromPayments && summaryFromPayments.coveredHours > 0 ? summaryFromPayments : null;
     const underpaid = sourcePayments.filter(
-      (p) => checkUnderpayment(rateSource, p, allEntries.filter((e) => e.source_id === s.id), { timeZone: tz, now })?.flagged,
+      (p) =>
+        checkUnderpayment(rateSource, p, allEntries.filter((e) => e.source_id === s.id), { timeZone: tz, now, projects: sourceProjects })
+          ?.flagged,
     ).length;
+    // Each project with hours in the period, with its own real rate.
+    const projects = projectsAll
+      .filter((p) => p.source_id === s.id)
+      .map((p) => {
+        const periodEntries = mine.filter((e) => e.project_id === p.id);
+        const periodHours = periodEntries.reduce((sum, e) => sum + entryHours(e, now, from), 0);
+        const rp = rateProjects.get(p.id)!;
+        const received = rp.pay_model === "fixed" ? receivedFor(p.id) : 0;
+        const r = projectRate(rateSource, rp, {
+          periodEntries,
+          allEntries: fixedEntries.filter((e) => e.project_id === p.id),
+          received,
+          now,
+          from,
+        });
+        return { project: p, periodHours, received, ...r };
+      })
+      .filter((p) => p.periodHours > 0);
     const realRate = received ? received.realRate : summary.realRate;
-    const gap = s.pay_model === "hourly" && rate && realRate !== null ? 1 - realRate / rate : null;
+    // Not against the advertised rate when projects with their own pay have hours in the period.
+    const ownPay = projects.some((p) => p.project.pay_model === "hourly" || p.project.pay_model === "fixed");
+    const gap = !ownPay && s.pay_model === "hourly" && rate && realRate !== null ? 1 - realRate / rate : null;
     const fx = ptax.get(s.currency) ?? null;
-    return { source: s, rate, summary, received, underpaid, realRate, gap, fx };
+    return { source: s, rate, summary, received, underpaid, realRate, gap, fx, projects };
   });
 
-  const hours = cards.reduce((sum, c) => sum + c.summary.hours, 0);
-  const unpaidHours = cards.reduce((sum, c) => sum + c.summary.unpaidHours, 0);
+  // Time without a client: always unpaid, part of the totals and of the overall real rate.
+  const noClientHours = entries.filter((e) => !e.source_id).reduce((sum, e) => sum + entryHours(e, now, from), 0);
+  const hours = cards.reduce((sum, c) => sum + c.summary.hours, 0) + noClientHours;
+  const unpaidHours = cards.reduce((sum, c) => sum + c.summary.unpaidHours, 0) + noClientHours;
   // Overall, in reais: only sources whose earnings and exchange rate are both known.
   let earnedBrl = 0;
   let earnedHours = 0;
@@ -111,6 +160,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
       earnedHours += c.summary.hours;
     }
   }
+  if (earnedHours > 0) earnedHours += noClientHours;
 
   const unpaidByCategory = new Map<string, number>();
   for (const e of entries) {
@@ -192,13 +242,10 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
           </div>
 
           <div className="grid items-start gap-4 md:grid-cols-2">
-            {cards.map(({ source: s, rate, summary, received, underpaid, realRate, gap, fx }) => {
+            {cards.map(({ source: s, rate, summary, received, underpaid, realRate, gap, fx, projects }) => {
+              const unit = s.pay_model === "per_task" ? t.sources.perTask : s.pay_model === "retainer" ? t.sources.perMonth : t.sources.perHour;
               const advertised =
-                s.pay_model === "fixed" || rate === null
-                  ? t.sources.fixed
-                  : fill(d.advertises, {
-                      rate: money(s.currency, rate) + (s.pay_model === "per_task" ? t.sources.perTask : t.sources.perHour),
-                    });
+                s.pay_model === "fixed" || rate === null ? t.sources.fixed : fill(d.advertises, { rate: money(s.currency, rate) + unit });
               const details: string[] = [];
               if (realRate !== null && s.currency !== "BRL") details.push(`${money(s.currency, realRate)}/h`);
               if (gap !== null) {
@@ -259,11 +306,44 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
                           {summary.missing === "units" ? d.missingUnits : d.missingFixed}
                         </p>
                       )}
+                      {projects.length > 0 && (
+                        <div className="flex flex-col gap-1.5 border-t border-line pt-3">
+                          <h3 className="m-0 text-[13px] font-bold text-ink-soft">{d.projects}</h3>
+                          <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[13px]">
+                            {projects.map((p) => {
+                              const rateText = p.realRate !== null ? money(s.currency, p.realRate) : null;
+                              const text =
+                                rateText === null
+                                  ? fill(d.projectHours, { hours: dur(p.periodHours) })
+                                  : p.basis === "rate"
+                                    ? fill(d.projectRate, { rate: rateText, hours: dur(p.hours) })
+                                    : fill(p.basis === "received" ? d.projectReceived : d.projectFixed, {
+                                        money: money(s.currency, p.basis === "received" ? p.received : Number(p.project.fixed_price ?? 0)),
+                                        rate: rateText,
+                                        hours: dur(p.hours),
+                                      });
+                              return (
+                                <li key={p.project.id} className="flex flex-wrap justify-between gap-x-3">
+                                  <span className="font-semibold">{p.project.name}</span>
+                                  <span className="text-ink-soft">{text}</span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      )}
                     </>
                   )}
                 </Card>
               );
             })}
+            {noClientHours > 0 && (
+              <Card className="gap-3">
+                <h2 className="m-0 text-[17px] font-bold">{d.noClientTitle}</h2>
+                <SplitBar paid={0} unpaid={noClientHours} />
+                <p className="m-0 text-[13px] text-ink-soft">{fill(d.noClientText, { hours: dur(noClientHours) })}</p>
+              </Card>
+            )}
           </div>
           <SplitLegend t={t} />
 

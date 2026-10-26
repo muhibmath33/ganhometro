@@ -6,7 +6,7 @@ import { CardIcon, ChartIcon, ClockIcon, GuideIcon, ListIcon, SlidersIcon } from
 
 const ICONS = { today: ClockIcon, dashboard: ChartIcon, payments: CardIcon, taxes: GuideIcon, log: ListIcon, settings: SlidersIcon };
 
-// also: other paths that belong to the item (platforms live under Settings).
+// also: other paths that belong to the item (platforms live under Settings, invoices under Payments).
 // desktopOnly: left out of the phone tab bar, which has room for five (the time log is one tap away on Today).
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; also?: string[]; desktopOnly?: boolean };
 

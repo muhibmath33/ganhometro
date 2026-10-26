@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { type EntryFormState, saveEntry } from "@/app/app/actions";
 import type { AppDictionary } from "@/i18n/app";
-import type { Category, EntryKind } from "@/lib/app/entries";
+import { type Category, type EntryKind, NO_CLIENT } from "@/lib/app/entries";
 import { fieldInput, fieldLabel } from "./SourceFields";
 import type { TimerSource } from "./Timer";
 import { Chip, FormMessage, legendClass, SubmitButton } from "./ui";
@@ -11,7 +11,8 @@ import { Chip, FormMessage, legendClass, SubmitButton } from "./ui";
 // Dates and times are on the user's clock, prepared by the server.
 export type EntryValues = {
   id?: string;
-  sourceId: string;
+  sourceId: string; // NO_CLIENT for time without a client
+  projectId: string | null;
   kind: EntryKind;
   categoryId: string | null;
   date: string;
@@ -39,9 +40,14 @@ export function EntryForm({
 }) {
   const [state, action, pending] = useActionState<EntryFormState, FormData>(saveEntry, null);
   const [sourceId, setSourceId] = useState(values.sourceId);
-  const [kind, setKind] = useState(values.kind);
+  const [chosenKind, setKind] = useState(values.kind);
+  const noClient = sourceId === NO_CLIENT;
+  // Time without a client is always unpaid.
+  const kind = noClient ? "unpaid" : chosenKind;
   const ofKind = categories.filter((c) => c.kind === kind);
-  const perTask = sources.find((s) => s.id === sourceId)?.perTask ?? false;
+  const source = sources.find((s) => s.id === sourceId);
+  const perTask = source?.perTask ?? false;
+  const projects = source?.projects ?? [];
 
   return (
     // Remount after a successful add (the server stamps each save) so the fields reset.
@@ -56,19 +62,42 @@ export function EntryForm({
               {s.name}
             </option>
           ))}
+          <option value={NO_CLIENT}>{t.entry.noClient}</option>
         </select>
       </label>
 
-      <fieldset className="m-0 border-0 p-0">
-        <legend className={legendClass}>{t.entry.kind}</legend>
-        <div className="grid grid-cols-2 gap-2">
-          {(["paid", "unpaid"] as const).map((k) => (
-            <Chip key={k} name="kind" value={k} tone={k} checked={kind === k} onChange={() => setKind(k)}>
-              {t.kinds[k]}
-            </Chip>
-          ))}
-        </div>
-      </fieldset>
+      {projects.length > 0 && (
+        // Keyed by source: another client starts with no project.
+        <label key={sourceId} className={fieldLabel}>
+          {t.entry.project}
+          <select name="project_id" defaultValue={sourceId === values.sourceId ? (values.projectId ?? "") : ""} className={fieldInput}>
+            <option value="">{t.entry.noProject}</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {noClient ? (
+        <>
+          <input type="hidden" name="kind" value="unpaid" />
+          <p className="m-0 rounded-[12px] bg-amber-tint px-4 py-3 text-[14px] text-amber-ink">{t.timer.noClientNote}</p>
+        </>
+      ) : (
+        <fieldset className="m-0 border-0 p-0">
+          <legend className={legendClass}>{t.entry.kind}</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {(["paid", "unpaid"] as const).map((k) => (
+              <Chip key={k} name="kind" value={k} tone={k} checked={kind === k} onChange={() => setKind(k)}>
+                {t.kinds[k]}
+              </Chip>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <label className={fieldLabel}>
         {t.entry.category}

@@ -4,13 +4,14 @@ import { EntryForm } from "@/components/app/EntryForm";
 import { Card, KindBadge, PageSkeleton } from "@/components/app/ui";
 import { categoryName, getAppDictionary } from "@/i18n/app";
 import { type Entry, entryTimes } from "@/lib/app/entries";
+import { loadTimerSources } from "@/lib/app/projects";
 import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { dayKey, formatDuration } from "@/lib/app/time";
 
 const PAGE = 60;
 
 async function TimeLog({ searchParams }: { searchParams: PageProps<"/app/registro">["searchParams"] }) {
-  const { supabase, profile } = await requireUser();
+  const { supabase, profile, user } = await requireUser();
   const locale = profileLocale(profile);
   const t = getAppDictionary(locale);
   const tz = profile.timezone;
@@ -20,22 +21,21 @@ async function TimeLog({ searchParams }: { searchParams: PageProps<"/app/registr
 
   let query = supabase
     .from("time_entries")
-    .select("id, source_id, kind, category_id, units, started_at, ended_at, origin")
+    .select("id, source_id, project_id, kind, category_id, units, started_at, ended_at, origin")
     .order("started_at", { ascending: false })
     .limit(PAGE + 1);
   if (before) query = query.lt("started_at", before);
-  const [{ data: rows }, { data: sourceRows }, { data: categoryRows }] = await Promise.all([
+  const [{ data: rows }, { all: sources, projects, active }, { data: categoryRows }] = await Promise.all([
     query,
-    supabase.from("income_sources").select("id, name, pay_model, archived_at").order("created_at"),
+    loadTimerSources(supabase, user.id),
     supabase.from("categories").select("id, kind, name, preset, archived_at").order("sort"),
   ]);
   const entries = (rows ?? []).slice(0, PAGE);
   const nextCursor = (rows?.length ?? 0) > PAGE ? entries[entries.length - 1].started_at : null;
-  const sources = sourceRows ?? [];
   const categories = (categoryRows ?? []).map((c) => ({ ...c, name: categoryName(c, locale) }));
   const sourceName = new Map(sources.map((s) => [s.id, s.name]));
+  const projectName = new Map(projects.map((p) => [p.id, p.name]));
   const categoryNames = new Map(categories.map((c) => [c.id, c.name]));
-  const active = sources.filter((s) => !s.archived_at).map((s) => ({ id: s.id, name: s.name, perTask: s.pay_model === "per_task" }));
 
   const serverNow = requestNow();
   const today = dayKey(new Date(serverNow), tz);
@@ -71,6 +71,7 @@ async function TimeLog({ searchParams }: { searchParams: PageProps<"/app/registr
                   maxDate={today}
                   values={{
                     sourceId: active[0].id,
+                    projectId: null,
                     kind: "paid",
                     categoryId: categories.find((c) => c.kind === "paid" && !c.archived_at)?.id ?? null,
                     date: today,
@@ -121,7 +122,8 @@ async function TimeLog({ searchParams }: { searchParams: PageProps<"/app/registr
                       )}
                       <span>
                         {[
-                          sourceName.get(e.source_id),
+                          e.source_id ? sourceName.get(e.source_id) : t.timer.noClient,
+                          e.project_id ? projectName.get(e.project_id) : null,
                           e.category_id ? categoryNames.get(e.category_id) : null,
                           e.units !== null ? t.log.units.replace("{n}", String(e.units)) : null,
                           e.origin === "manual" ? t.log.manual : null,

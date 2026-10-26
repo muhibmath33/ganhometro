@@ -10,7 +10,7 @@ export type SourceInput = Database["public"]["Tables"]["income_sources"]["Insert
 export type SourceError = keyof AppDictionary["source"]["errors"];
 
 export const KINDS = ["platform", "client"] as const satisfies readonly Enums["source_kind"][];
-export const PAY_MODELS = ["hourly", "per_task", "fixed"] as const satisfies readonly Enums["pay_model"][];
+export const PAY_MODELS = ["hourly", "per_task", "fixed", "retainer"] as const satisfies readonly Enums["pay_model"][];
 export const SCHEDULES = ["weekly", "biweekly", "monthly", "on_invoice", "irregular"] as const satisfies readonly Enums["pay_schedule"][];
 export const CURRENCIES = ["USD", "EUR", "GBP", "BRL"] as const;
 export const WORK_TYPES = ["ai", "freelancer", "teacher", "creator", "other"] as const satisfies readonly Enums["work_type"][];
@@ -38,7 +38,9 @@ export function parseSourceForm(form: FormData): { data: SourceInput } | { error
   let rate: number | null = null;
   if (payModel !== "fixed") {
     rate = optionalNumber(form.get("rate"));
-    if (rate === null || !Number.isFinite(rate) || rate < 0 || rate > 99_999) return { error: "rate" };
+    // A retainer's rate is the monthly amount, so it can be larger.
+    const max = payModel === "retainer" ? 9_999_999 : 99_999;
+    if (rate === null || !Number.isFinite(rate) || rate < 0 || rate > max) return { error: "rate" };
   }
 
   const commission = optionalNumber(form.get("commission_pct"));
@@ -80,7 +82,10 @@ export function describeSource(source: Source, t: AppDictionary, locale: Locale)
   const symbol = currencySymbol(source.currency);
   if (source.pay_model === "fixed") parts.push(t.sources.fixed);
   else if (source.rate !== null)
-    parts.push(formatMoney(symbol, Number(source.rate), locale) + (source.pay_model === "per_task" ? t.sources.perTask : t.sources.perHour));
+    parts.push(
+      formatMoney(symbol, Number(source.rate), locale) +
+        (source.pay_model === "per_task" ? t.sources.perTask : source.pay_model === "retainer" ? t.sources.perMonth : t.sources.perHour),
+    );
   if (source.commission_pct !== null && Number(source.commission_pct) > 0)
     parts.push(t.sources.commission.replace("{n}", String(Number(source.commission_pct))));
   parts.push(scheduleLabel(source, t));

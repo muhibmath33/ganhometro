@@ -10,6 +10,9 @@ export type Category = Pick<Database["public"]["Tables"]["categories"]["Row"], "
 
 export const ENTRY_KINDS = ["paid", "unpaid"] as const satisfies readonly EntryKind[];
 
+// The source choice for time without a client (proposals, prospecting, admin). Always unpaid.
+export const NO_CLIENT = "none";
+
 // Timer entries shorter than this are dropped on stop (or changed in place on a switch),
 // so a mis-tap doesn't leave a 3-second entry in the log.
 export const MIN_TIMER_MS = 60_000;
@@ -38,10 +41,23 @@ export function parseEntryForm(
   now: Date,
   { running = false } = {},
 ):
-  | { data: { source_id: string; kind: EntryKind; category_id: string | null; units: number | null; started_at: string; ended_at: string | null } }
+  | {
+      data: {
+        source_id: string | null;
+        project_id: string | null;
+        kind: EntryKind;
+        category_id: string | null;
+        units: number | null;
+        started_at: string;
+        ended_at: string | null;
+      };
+    }
   | { error: EntryError } {
-  const sourceId = text(form.get("source_id"));
-  if (!sourceId) return { error: "source" };
+  const sourceText = text(form.get("source_id"));
+  if (!sourceText) return { error: "source" };
+  const sourceId = sourceText === NO_CLIENT ? null : sourceText;
+  const kind = parseKind(form.get("kind"));
+  if (!sourceId && kind === "paid") return { error: "noClientPaid" };
 
   const day = text(form.get("date"));
   const start = zonedToUtc(day, text(form.get("start")), timeZone);
@@ -64,9 +80,10 @@ export function parseEntryForm(
   return {
     data: {
       source_id: sourceId,
-      kind: parseKind(form.get("kind")),
+      project_id: (sourceId && text(form.get("project_id"))) || null,
+      kind,
       category_id: text(form.get("category_id")) || null,
-      units,
+      units: sourceId ? units : null,
       started_at: start.toISOString(),
       ended_at: end ? end.toISOString() : null,
     },

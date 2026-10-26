@@ -64,13 +64,13 @@ export function SourceFields({ t, source }: { t: AppDictionary; source?: Source 
         </label>
         {payModel !== "fixed" && (
           <label className={fieldLabel}>
-            {payModel === "per_task" ? s.ratePerTask : s.rateHourly}
+            {payModel === "per_task" ? s.ratePerTask : payModel === "retainer" ? s.rateMonthly : s.rateHourly}
             <input
               name="rate"
               inputMode="decimal"
               required
               defaultValue={source?.rate !== null && source?.rate !== undefined ? String(source.rate).replace(".", ",") : ""}
-              placeholder="25,00"
+              placeholder={payModel === "retainer" ? "2.000,00" : "25,00"}
               className={`${fieldInput} font-mono`}
             />
           </label>

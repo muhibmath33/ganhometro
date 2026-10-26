@@ -3,11 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { CATEGORY_PRESETS } from "@/i18n/app";
-import { type EntryError, type EntryKind, MIN_TIMER_MS, parseEntryForm, parseKind, parseUnits } from "@/lib/app/entries";
+import { type EntryError, type EntryKind, MIN_TIMER_MS, NO_CLIENT, parseEntryForm, parseKind, parseUnits } from "@/lib/app/entries";
 import { METHODS, type Method, type PaymentError, parsePaymentForm } from "@/lib/app/payments";
+import { type InvoiceError, parseInvoiceForm } from "@/lib/app/invoices";
+import { parseProjectForm, type ProjectError } from "@/lib/app/projects";
 import { CURRENCIES, parseSourceForm, type SourceError, WORK_TYPES } from "@/lib/app/sources";
 import { addDays, dayKey, isDay } from "@/lib/app/time";
 import { parseNumber } from "@/lib/calc";
+import { amountFromHours } from "@/lib/money/invoices";
 import { defaultPeriods } from "@/lib/money/received";
 import { getSession, requireUser } from "@/lib/app/session";
 import { site } from "@/lib/site";
@@ -118,6 +121,35 @@ export async function setSourceArchived(form: FormData) {
   redirect(error && isFreeLimit(error.message) ? "/app/fontes?limite=1" : "/app/fontes");
 }
 
+// --- Projects --------------------------------------------------------------------------
+
+export type ProjectFormState = { error?: ProjectError | "generic"; ok?: boolean; savedAt?: number } | null;
+
+export async function saveProject(_prev: ProjectFormState, form: FormData): Promise<ProjectFormState> {
+  const { supabase } = await requireUser();
+  const parsed = parseProjectForm(form);
+  if ("error" in parsed) return { error: parsed.error };
+  const id = String(form.get("id") ?? "");
+  const sourceId = String(form.get("source_id") ?? "");
+  // The (source_id, user_id) foreign key only accepts the user's own sources.
+  const { error } = id
+    ? await supabase.from("projects").update(parsed.data).eq("id", id)
+    : await supabase.from("projects").insert({ ...parsed.data, source_id: sourceId });
+  if (error) return { error: "generic" };
+  revalidatePath("/app", "layout");
+  return { ok: true, savedAt: Date.now() };
+}
+
+export async function setProjectArchived(form: FormData) {
+  const { supabase } = await requireUser();
+  const archive = form.get("archive") === "1";
+  await supabase
+    .from("projects")
+    .update({ archived_at: archive ? new Date().toISOString() : null })
+    .eq("id", String(form.get("id") ?? ""));
+  revalidatePath("/app", "layout");
+}
+
 // --- Timer ---------------------------------------------------------------------------
 // The running entry lives on the server (ended_at = null), so it survives closing the tab or
 // switching phones. The database allows one running entry per user and no overlaps.
@@ -133,13 +165,26 @@ async function categoryFits(supabase: Supabase, categoryId: string | null, kind:
   return data?.kind === kind;
 }
 
+// A project must be one of the user's (RLS) and belong to the entry's source. No source, no project.
+async function projectFits(supabase: Supabase, projectId: string | null, sourceId: string | null) {
+  if (!projectId) return true;
+  if (!sourceId) return false;
+  const { data } = await supabase.from("projects").select("source_id").eq("id", projectId).maybeSingle();
+  return data?.source_id === sourceId;
+}
+
 export async function startTimer(_prev: TimerState, form: FormData): Promise<TimerState> {
   const { supabase } = await requireUser();
-  const kind = parseKind(form.get("kind"));
+  const sourceText = String(form.get("source_id") ?? "");
+  const sourceId = sourceText === NO_CLIENT ? null : sourceText;
+  // Time without a client is always unpaid.
+  const kind = sourceId ? parseKind(form.get("kind")) : "unpaid";
   const categoryId = String(form.get("category_id") ?? "") || null;
-  if (!(await categoryFits(supabase, categoryId, kind))) return { error: "generic" };
+  const projectId = (sourceId && String(form.get("project_id") ?? "")) || null;
+  if (!(await categoryFits(supabase, categoryId, kind)) || !(await projectFits(supabase, projectId, sourceId))) return { error: "generic" };
   const { error } = await supabase.from("time_entries").insert({
-    source_id: String(form.get("source_id") ?? ""),
+    source_id: sourceId,
+    project_id: projectId,
     kind,
     category_id: categoryId,
     started_at: new Date().toISOString(),
@@ -161,10 +206,11 @@ export async function switchTimer(_prev: TimerState, form: FormData): Promise<Ti
   const units = parseUnits(form.get("units"));
   const { data: running } = await supabase
     .from("time_entries")
-    .select("id, source_id, started_at")
+    .select("id, source_id, project_id, started_at")
     .is("ended_at", null)
     .maybeSingle();
-  if (running && (await categoryFits(supabase, categoryId, kind))) {
+  // Time without a client can't switch to paid.
+  if (running && (running.source_id || kind === "unpaid") && (await categoryFits(supabase, categoryId, kind))) {
     const now = new Date();
     if (now.getTime() - Date.parse(running.started_at) < MIN_TIMER_MS) {
       const { error } = await supabase.from("time_entries").update({ kind, category_id: categoryId }).eq("id", running.id);
@@ -177,6 +223,7 @@ export async function switchTimer(_prev: TimerState, form: FormData): Promise<Ti
       if (error) return { error: "generic" };
       const { error: startError } = await supabase.from("time_entries").insert({
         source_id: running.source_id,
+        project_id: running.project_id,
         kind,
         category_id: categoryId,
         started_at: now.toISOString(),
@@ -231,6 +278,7 @@ export async function saveEntry(_prev: EntryFormState, form: FormData): Promise<
   const parsed = parseEntryForm(form, profile.timezone, new Date(), { running });
   if ("error" in parsed) return { error: parsed.error };
   if (!(await categoryFits(supabase, parsed.data.category_id, parsed.data.kind))) return { error: "category" };
+  if (!(await projectFits(supabase, parsed.data.project_id, parsed.data.source_id))) return { error: "project" };
 
   const { error } = id
     ? await supabase.from("time_entries").update(parsed.data).eq("id", id)
@@ -280,6 +328,18 @@ export async function savePayment(_prev: PaymentFormState, form: FormData): Prom
   const parsed = parsePaymentForm(form, dayKey(new Date(), profile.timezone));
   if ("error" in parsed) return { error: parsed.error };
   let row = parsed.data;
+  if (!(await projectFits(supabase, row.project_id, row.source_id))) return { error: "project" };
+  if (row.invoice_id) {
+    // The invoice must be the same client's, in the same currency. Its project and work period carry over.
+    const { data: invoice } = await supabase
+      .from("invoices")
+      .select("source_id, project_id, currency, period_start, period_end")
+      .eq("id", row.invoice_id)
+      .maybeSingle();
+    if (!invoice || invoice.source_id !== row.source_id || invoice.currency !== row.currency) return { error: "invoice" };
+    row = { ...row, project_id: row.project_id ?? invoice.project_id };
+    if (!row.period_start && invoice.period_start) row = { ...row, period_start: invoice.period_start, period_end: invoice.period_end ?? row.received_on };
+  }
   if (!row.period_start) {
     const ctx = await periodContext(supabase, row.source_id, row.received_on, profile.timezone, id);
     const [[start, end]] = defaultPeriods(ctx.previousEnd, ctx.firstWorkDay, [row.received_on]);
@@ -291,6 +351,8 @@ export async function savePayment(_prev: PaymentFormState, form: FormData): Prom
   // 23503: not one of the user's sources.
   if (error) return { error: error.code === "23503" ? "source" : "generic" };
   revalidatePath("/app", "layout");
+  // Logged from an invoice's page: back to it.
+  if (form.get("back") === "invoice" && row.invoice_id) redirect(`/app/faturas/${row.invoice_id}`);
   if (id) redirect("/app/pagamentos");
   return { ok: true, savedAt: Date.now() };
 }
@@ -300,6 +362,82 @@ export async function deletePayment(form: FormData) {
   await supabase.from("payments").delete().eq("id", String(form.get("id") ?? ""));
   revalidatePath("/app", "layout");
   redirect("/app/pagamentos");
+}
+
+// --- Invoices ------------------------------------------------------------------------
+
+export type InvoiceFormState = { error?: InvoiceError | "generic"; ok?: boolean; savedAt?: number } | null;
+
+export async function saveInvoice(_prev: InvoiceFormState, form: FormData): Promise<InvoiceFormState> {
+  const { supabase } = await requireUser();
+  const parsed = parseInvoiceForm(form);
+  if ("error" in parsed) return { error: parsed.error };
+  if (!(await projectFits(supabase, parsed.data.project_id, parsed.data.source_id))) return { error: "project" };
+  const id = String(form.get("id") ?? "");
+  const { data, error } = id
+    ? await supabase.from("invoices").update(parsed.data).eq("id", id).select("id").maybeSingle()
+    : await supabase.from("invoices").insert(parsed.data).select("id").maybeSingle();
+  // 23505: the number is taken. 23503: not one of the user's sources.
+  if (error || !data) return { error: error?.code === "23505" ? "number" : error?.code === "23503" ? "source" : "generic" };
+  revalidatePath("/app", "layout");
+  redirect(`/app/faturas/${data.id}`);
+}
+
+export async function deleteInvoice(form: FormData) {
+  const { supabase } = await requireUser();
+  // Linked payments stay; the foreign key clears their invoice_id.
+  await supabase.from("invoices").delete().eq("id", String(form.get("id") ?? ""));
+  revalidatePath("/app", "layout");
+  redirect("/app/faturas");
+}
+
+export type InvoiceHours = { hours: number; rate: number; amount: number } | { error: "noHours" | "noRate" | "period" };
+
+// "Calculate from my hours": paid hours between two days × the hourly rate (the project's own rate, else
+// the client's). Without a project, hours in fixed-price projects are left out.
+export async function invoiceFromHours(input: { sourceId: string; projectId: string; from: string; to: string }): Promise<InvoiceHours> {
+  const { supabase, profile, user } = await requireUser();
+  if (!isDay(input.from) || !isDay(input.to) || input.to < input.from) return { error: "period" };
+  const tz = profile.timezone;
+  const [{ data: source }, { data: projects }, { data: entries }] = await Promise.all([
+    supabase.from("income_sources").select("pay_model, rate").eq("id", input.sourceId).maybeSingle(),
+    supabase.from("projects").select("id, pay_model, rate").eq("source_id", input.sourceId),
+    supabase
+      .from("time_entries")
+      .select("project_id, kind, units, started_at, ended_at")
+      .eq("user_id", user.id)
+      .eq("source_id", input.sourceId)
+      .eq("kind", "paid")
+      .lt("started_at", new Date(Date.parse(`${addDays(input.to, 2)}T00:00:00Z`)).toISOString())
+      .or(`ended_at.gte.${new Date(Date.parse(`${addDays(input.from, -1)}T00:00:00Z`)).toISOString()},ended_at.is.null`),
+  ]);
+  if (!source) return { error: "noRate" };
+  const sourceRate = source.pay_model === "hourly" && source.rate !== null ? Number(source.rate) : null;
+  const rateOf = (projectId: string | null) => {
+    const p = (projects ?? []).find((x) => x.id === projectId);
+    if (p?.pay_model === "fixed") return undefined; // paid by its price, not by the hour
+    return p?.pay_model === "hourly" && p.rate !== null ? Number(p.rate) : sourceRate;
+  };
+  // No hourly rate for the chosen project, or for a client with no hourly projects.
+  const chosenRate = input.projectId ? rateOf(input.projectId) : sourceRate;
+  if (chosenRate == null && (input.projectId || !(projects ?? []).some((p) => p.pay_model === "hourly"))) return { error: "noRate" };
+  // Entries grouped by their rate; hours with no hourly rate can't be priced.
+  const groups = new Map<number | null, NonNullable<typeof entries>>();
+  for (const e of entries ?? []) {
+    if (input.projectId && e.project_id !== input.projectId) continue;
+    const rate = rateOf(e.project_id);
+    if (rate !== undefined) groups.set(rate, [...(groups.get(rate) ?? []), e]);
+  }
+  let hours = 0;
+  let amount = 0;
+  for (const [rate, list] of groups) {
+    const r = amountFromHours(list, rate ?? 0, { fromDay: input.from, toDay: input.to, timeZone: tz, now: Date.now() });
+    if (rate === null && r.hours > 0) return { error: "noRate" };
+    hours += r.hours;
+    amount += r.amount;
+  }
+  if (hours <= 0) return { error: "noHours" };
+  return { hours, rate: amount / hours, amount: Math.round(amount * 100) / 100 };
 }
 
 // Rows picked in the statement preview: [{ day, amount, currency, source_id, ref }]. Rows already imported

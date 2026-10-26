@@ -6,12 +6,14 @@ import { ConfirmDelete } from "@/components/app/ConfirmDelete";
 import { EntryForm } from "@/components/app/EntryForm";
 import { Card, PageSkeleton } from "@/components/app/ui";
 import { categoryName, getAppDictionary } from "@/i18n/app";
+import { NO_CLIENT } from "@/lib/app/entries";
+import { loadTimerSources } from "@/lib/app/projects";
 import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { dayKey, timeKey } from "@/lib/app/time";
 
 async function EditEntry({ params }: { params: PageProps<"/app/registro/[id]">["params"] }) {
   const { id } = await params;
-  const { supabase, profile } = await requireUser();
+  const { supabase, profile, user } = await requireUser();
   const locale = profileLocale(profile);
   const t = getAppDictionary(locale);
   const tz = profile.timezone;
@@ -19,14 +21,11 @@ async function EditEntry({ params }: { params: PageProps<"/app/registro/[id]">["
   const { data: entry } = await supabase.from("time_entries").select("*").eq("id", id).maybeSingle();
   if (!entry) notFound();
 
-  const [{ data: sourceRows }, { data: categoryRows }] = await Promise.all([
-    supabase.from("income_sources").select("id, name, pay_model, archived_at").order("created_at"),
+  // Active ones, plus the entry's own source, project and category even if archived since.
+  const [{ active: sources }, { data: categoryRows }] = await Promise.all([
+    loadTimerSources(supabase, user.id, { sourceId: entry.source_id, projectId: entry.project_id }),
     supabase.from("categories").select("id, kind, name, preset, archived_at").order("sort"),
   ]);
-  // Active ones, plus the entry's own source and category even if archived since.
-  const sources = (sourceRows ?? [])
-    .filter((s) => !s.archived_at || s.id === entry.source_id)
-    .map((s) => ({ id: s.id, name: s.name, perTask: s.pay_model === "per_task" }));
   const categories = (categoryRows ?? [])
     .filter((c) => !c.archived_at || c.id === entry.category_id)
     .map((c) => ({ ...c, name: categoryName(c, locale) }));
@@ -47,7 +46,8 @@ async function EditEntry({ params }: { params: PageProps<"/app/registro/[id]">["
         maxDate={dayKey(new Date(requestNow()), tz)}
         values={{
           id: entry.id,
-          sourceId: entry.source_id,
+          sourceId: entry.source_id ?? NO_CLIENT,
+          projectId: entry.project_id,
           kind: entry.kind,
           categoryId: entry.category_id,
           date: dayKey(start, tz),

@@ -7,6 +7,7 @@ import { Card, PageSkeleton } from "@/components/app/ui";
 import { getAppDictionary } from "@/i18n/app";
 import { fill } from "@/i18n/config";
 import { latePayments } from "@/lib/app/alerts";
+import { loadInvoices, loadPaymentSources, owedSummary } from "@/lib/app/invoices";
 import { paymentMoney } from "@/lib/app/money";
 import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { currencySymbol } from "@/lib/app/sources";
@@ -26,15 +27,25 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/app/pagame
   const now = requestNow();
   const today = dayKey(new Date(now), tz);
 
-  const [{ data: paymentRows }, { data: sourceRows }, late] = await Promise.all([
+  const [{ data: paymentRows }, { data: sourceRows }, { data: projectRows }, late, active, invoices] = await Promise.all([
     supabase.from("payments").select("*").order("received_on", { ascending: false }).order("created_at", { ascending: false }).limit(LIMIT),
     supabase.from("income_sources").select("id, name, currency, pay_model, rate, commission_pct, archived_at").order("created_at"),
+    supabase.from("projects").select("id, source_id, name, pay_model, rate").order("created_at"),
     latePayments(supabase, user.id, tz, today),
+    loadPaymentSources(supabase, user.id, today),
+    loadInvoices(supabase, user.id, today),
   ]);
   const payments = paymentRows ?? [];
   const sources = sourceRows ?? [];
+  const projects = projectRows ?? [];
   const byId = new Map(sources.map((s) => [s.id, s]));
-  const active = sources.filter((s) => !s.archived_at).map((s) => ({ id: s.id, name: s.name, currency: s.currency }));
+  const invoiceNumber = new Map(invoices.map((i) => [i.id, i.number]));
+  const projectName = new Map(projects.map((p) => [p.id, p.name]));
+  const owed = owedSummary(invoices);
+  // "Registrar pagamento desta fatura": the form starts with that invoice and what's left on it.
+  const forInvoice = typeof params.fatura === "string" ? invoices.find((i) => i.id === params.fatura) : undefined;
+  const editable = (n: number) => (locale === "en" ? n.toFixed(2) : n.toFixed(2).replace(".", ","));
+  const first = (forInvoice && active.find((s) => s.id === forInvoice.source_id)) || active[0];
 
   // Hours in the displayed payments' periods (for "possível diferença") and the rates to convert them.
   const days = payments.flatMap((p) => [p.period_start ?? p.received_on, p.received_on]).sort();
@@ -42,7 +53,7 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/app/pagame
     days.length
       ? supabase
           .from("time_entries")
-          .select("source_id, kind, units, started_at, ended_at")
+          .select("source_id, project_id, kind, units, started_at, ended_at")
           .gte("started_at", startOfDay(days[0], tz).toISOString())
       : Promise.resolve({ data: [] }),
     days.length ? loadRates(supabase, payments.map((p) => p.currency), days[0], days[days.length - 1]) : Promise.resolve({}),
@@ -66,7 +77,31 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/app/pagame
         <p className="m-0 max-w-[640px] text-[15px] text-ink-soft">{t.payments.lead}</p>
       </div>
 
-      <LateAlerts t={t} locale={locale} alerts={late} />
+      <LateAlerts t={t} locale={locale} alerts={late} invoices={invoices} />
+
+      {invoices.length > 0 && (
+        <Card>
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="m-0 text-[17px] font-bold">{t.invoices.owed}</h2>
+            <Link href="/app/faturas" className="text-[14px] font-semibold">
+              {t.invoices.see} →
+            </Link>
+          </div>
+          {owed.byCurrency.size ? (
+            <p className="m-0 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[14px] text-ink-soft">
+              {[...owed.byCurrency].map(([currency, amount]) => (
+                <span key={currency} className="font-mono text-[18px] font-semibold text-ink">
+                  {formatMoney(currencySymbol(currency), amount, locale)}
+                </span>
+              ))}
+              <span>{t.invoices.owedLine}</span>
+              {owed.overdue > 0 && <span className="font-semibold text-amber-ink">· {fill(t.invoices.overdueLine, { n: owed.overdue })}</span>}
+            </p>
+          ) : (
+            <p className="m-0 text-[14px] text-muted">{t.invoices.none}</p>
+          )}
+        </Card>
+      )}
 
       {typeof params.importados === "string" && (
         <p role="status" className="m-0 rounded-[12px] bg-brand-tint px-4 py-3 text-[14px] font-semibold text-brand">
@@ -84,9 +119,22 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/app/pagame
           </div>
           <PaymentForm
             t={t}
+            locale={locale}
             sources={active}
             maxDate={today}
-            values={{ sourceId: active[0].id, amount: "", currency: active[0].currency, receivedOn: today, method: "", brl: "", periodStart: "", periodEnd: "" }}
+            values={{
+              sourceId: first.id,
+              projectId: forInvoice?.project_id ?? "",
+              invoiceId: forInvoice?.id ?? "",
+              back: forInvoice ? "invoice" : undefined,
+              amount: forInvoice ? editable(forInvoice.balance) : "",
+              currency: forInvoice?.currency ?? first.currency,
+              receivedOn: today,
+              method: "",
+              brl: "",
+              periodStart: "",
+              periodEnd: "",
+            }}
           />
         </Card>
       ) : (
@@ -121,9 +169,19 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/app/pagame
                 const under = source
                   ? checkUnderpayment(
                       { pay_model: source.pay_model, rate: source.rate === null ? null : Number(source.rate), commission_pct: commission },
-                      { amount, received_on: p.received_on, period_start: p.period_start, period_end: p.period_end },
+                      { ...p, amount },
                       entries.filter((e) => e.source_id === p.source_id),
-                      { timeZone: tz, now },
+                      {
+                        timeZone: tz,
+                        now,
+                        projects: projects
+                          .filter((x) => x.source_id === p.source_id)
+                          .map((x) => ({
+                            id: x.id,
+                            pay_model: x.pay_model === "hourly" || x.pay_model === "fixed" ? x.pay_model : null,
+                            rate: x.rate === null ? null : Number(x.rate),
+                          })),
+                      },
                     )
                   : null;
                 const symbol = currencySymbol(p.currency);
@@ -137,6 +195,8 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/app/pagame
                       <span className="text-[13px] text-ink-soft">
                         {[
                           formatDay(p.received_on, locale),
+                          p.project_id ? projectName.get(p.project_id) : null,
+                          p.invoice_id && invoiceNumber.has(p.invoice_id) ? `${t.invoices.form.number} ${invoiceNumber.get(p.invoice_id)}` : null,
                           p.method ? t.payment.methods[p.method as keyof typeof t.payment.methods] : null,
                           p.currency === "BRL"
                             ? null

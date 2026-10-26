@@ -66,19 +66,51 @@ export type Database = {
                   Relationships: [
                     
                   ]
-                },"payments": {
+                },"invoices": {
                   Row: {
-                    "amount": number,"amount_brl_received": number | null,"created_at": string,"currency": string,"expected_on": string | null,"id": string,"import_ref": string | null,"method": string | null,"origin": string,"period_end": string | null,"period_start": string | null,"project_id": string | null,"received_on": string,"source_id": string,"user_id": string
+                    "amount": number,"created_at": string,"currency": string,"due_on": string,"id": string,"issued_on": string,"number": string,"period_end": string | null,"period_start": string | null,"project_id": string | null,"source_id": string,"status": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount": number,"amount_brl_received"?: number | null,"created_at"?: string,"currency"?: string,"expected_on"?: string | null,"id"?: string,"import_ref"?: string | null,"method"?: string | null,"origin"?: string,"period_end"?: string | null,"period_start"?: string | null,"project_id"?: string | null,"received_on": string,"source_id": string,"user_id"?: string
+                    "amount": number,"created_at"?: string,"currency"?: string,"due_on": string,"id"?: string,"issued_on": string,"number": string,"period_end"?: string | null,"period_start"?: string | null,"project_id"?: string | null,"source_id": string,"status"?: string,"user_id"?: string
                   }
                   Update: {
-                    "amount"?: number,"amount_brl_received"?: number | null,"created_at"?: string,"currency"?: string,"expected_on"?: string | null,"id"?: string,"import_ref"?: string | null,"method"?: string | null,"origin"?: string,"period_end"?: string | null,"period_start"?: string | null,"project_id"?: string | null,"received_on"?: string,"source_id"?: string,"user_id"?: string
+                    "amount"?: number,"created_at"?: string,"currency"?: string,"due_on"?: string,"id"?: string,"issued_on"?: string,"number"?: string,"period_end"?: string | null,"period_start"?: string | null,"project_id"?: string | null,"source_id"?: string,"status"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "invoices_project_id_user_id_fkey"
+      columns: ["project_id","user_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id","user_id"]
+    },{
+      foreignKeyName: "invoices_source_id_user_id_fkey"
+      columns: ["source_id","user_id"]
+isOneToOne: false
+      referencedRelation: "income_sources"
+      referencedColumns: ["id","user_id"]
+    }
+                  ]
+                },"payments": {
+                  Row: {
+                    "amount": number,"amount_brl_received": number | null,"created_at": string,"currency": string,"expected_on": string | null,"id": string,"import_ref": string | null,"invoice_id": string | null,"method": string | null,"origin": string,"period_end": string | null,"period_start": string | null,"project_id": string | null,"received_on": string,"source_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"amount_brl_received"?: number | null,"created_at"?: string,"currency"?: string,"expected_on"?: string | null,"id"?: string,"import_ref"?: string | null,"invoice_id"?: string | null,"method"?: string | null,"origin"?: string,"period_end"?: string | null,"period_start"?: string | null,"project_id"?: string | null,"received_on": string,"source_id": string,"user_id"?: string
+                  }
+                  Update: {
+                    "amount"?: number,"amount_brl_received"?: number | null,"created_at"?: string,"currency"?: string,"expected_on"?: string | null,"id"?: string,"import_ref"?: string | null,"invoice_id"?: string | null,"method"?: string | null,"origin"?: string,"period_end"?: string | null,"period_start"?: string | null,"project_id"?: string | null,"received_on"?: string,"source_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "payments_invoice_fk"
+      columns: ["invoice_id","user_id"]
+isOneToOne: false
+      referencedRelation: "invoices"
+      referencedColumns: ["id","user_id"]
+    },{
       foreignKeyName: "payments_project_id_user_id_fkey"
       columns: ["project_id","user_id"]
 isOneToOne: false
@@ -156,14 +188,14 @@ isOneToOne: false
                   ]
                 },"time_entries": {
                   Row: {
-                    "category_id": string | null,"created_at": string,"ended_at": string | null,"id": string,"kind": Database["public"]['Enums']["entry_kind"],"origin": string,"project_id": string | null,"source_id": string,"started_at": string,"units": number | null,"user_id": string
+                    "category_id": string | null,"created_at": string,"ended_at": string | null,"id": string,"kind": Database["public"]['Enums']["entry_kind"],"origin": string,"project_id": string | null,"source_id": string | null,"started_at": string,"units": number | null,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "category_id"?: string | null,"created_at"?: string,"ended_at"?: string | null,"id"?: string,"kind": Database["public"]['Enums']["entry_kind"],"origin"?: string,"project_id"?: string | null,"source_id": string,"started_at": string,"units"?: number | null,"user_id"?: string
+                    "category_id"?: string | null,"created_at"?: string,"ended_at"?: string | null,"id"?: string,"kind": Database["public"]['Enums']["entry_kind"],"origin"?: string,"project_id"?: string | null,"source_id"?: string | null,"started_at": string,"units"?: number | null,"user_id"?: string
                   }
                   Update: {
-                    "category_id"?: string | null,"created_at"?: string,"ended_at"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["entry_kind"],"origin"?: string,"project_id"?: string | null,"source_id"?: string,"started_at"?: string,"units"?: number | null,"user_id"?: string
+                    "category_id"?: string | null,"created_at"?: string,"ended_at"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["entry_kind"],"origin"?: string,"project_id"?: string | null,"source_id"?: string | null,"started_at"?: string,"units"?: number | null,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -197,7 +229,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "entry_kind": "paid"|"unpaid","pay_model": "hourly"|"per_task"|"fixed","pay_schedule": "weekly"|"biweekly"|"monthly"|"on_invoice"|"irregular","plan": "free"|"pro","source_kind": "platform"|"client","work_type": "ai"|"freelancer"|"teacher"|"creator"|"other"
+            "entry_kind": "paid"|"unpaid","pay_model": "hourly"|"per_task"|"fixed"|"retainer","pay_schedule": "weekly"|"biweekly"|"monthly"|"on_invoice"|"irregular","plan": "free"|"pro","source_kind": "platform"|"client","work_type": "ai"|"freelancer"|"teacher"|"creator"|"other"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -317,7 +349,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "entry_kind": ["paid", "unpaid"],"pay_model": ["hourly", "per_task", "fixed"],"pay_schedule": ["weekly", "biweekly", "monthly", "on_invoice", "irregular"],"plan": ["free", "pro"],"source_kind": ["platform", "client"],"work_type": ["ai", "freelancer", "teacher", "creator", "other"]
+            "entry_kind": ["paid", "unpaid"],"pay_model": ["hourly", "per_task", "fixed", "retainer"],"pay_schedule": ["weekly", "biweekly", "monthly", "on_invoice", "irregular"],"plan": ["free", "pro"],"source_kind": ["platform", "client"],"work_type": ["ai", "freelancer", "teacher", "creator", "other"]
           }
         }
 } as const

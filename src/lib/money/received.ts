@@ -2,7 +2,7 @@
 // Payments cover a period of work in calendar days; entries are instants. Relative imports with
 // extensions, so `npm test` runs it directly with Node.
 import { addDays, startOfDay } from "../app/time.ts";
-import { entryHours, type RateEntry, type RateSource } from "./realRate.ts";
+import { entryHours, type RateEntry, type RateProject, type RateSource } from "./realRate.ts";
 import { companyMonth, individualMonth, type InssPlan, round2 } from "./tax.ts";
 
 export type PaymentLite = {
@@ -97,25 +97,42 @@ export type Underpayment = { expected: number; difference: number; flagged: bool
 
 // "Possível diferença": paid hours (or tasks) in a payment's period × the rate, minus what was paid.
 // Flagged only above the larger of 2 (in the source's currency) or 3% of the expected amount.
+// Projects with their own hourly rate use it; fixed-price projects and retainers aren't checked by the hour.
+// A payment toward an invoice isn't either: the invoice shows what's left on it.
 export function checkUnderpayment(
   source: RateSource,
-  payment: PaymentLite,
-  entries: RateEntry[],
-  { timeZone, now }: { timeZone: string; now: number },
+  payment: PaymentLite & { project_id?: string | null; invoice_id?: string | null },
+  entries: (RateEntry & { project_id?: string | null })[],
+  { timeZone, now, projects = [] }: { timeZone: string; now: number; projects?: Pick<RateProject, "id" | "pay_model" | "rate">[] },
 ): Underpayment | null {
-  if (source.pay_model === "fixed" || source.rate === null || !payment.period_start || !payment.period_end) return null;
-  const paidHours = hoursBetween(entries, payment.period_start, payment.period_end, timeZone, now, "paid");
-  let expected: number;
-  if (source.pay_model === "hourly") {
-    expected = paidHours * source.rate;
-  } else {
-    const from = startOfDay(payment.period_start, timeZone).getTime();
-    const to = startOfDay(addDays(payment.period_end, 1), timeZone).getTime();
-    const units = entries
-      .filter((e) => e.kind === "paid" && Date.parse(e.started_at) >= from && Date.parse(e.started_at) < to)
-      .reduce((sum, e) => sum + (e.units ?? 0), 0);
-    if (!units) return null;
-    expected = units * source.rate;
+  if (source.pay_model === "retainer" || payment.invoice_id || !payment.period_start || !payment.period_end) return null;
+  const projectOf = (id: string | null | undefined) => projects.find((p) => p.id === id);
+  const forProject = projectOf(payment.project_id);
+  if (forProject?.pay_model === "fixed") return null;
+  // A payment for a project covers that project's hours; otherwise every hour not in a fixed-price project.
+  const mine = entries.filter((e) =>
+    forProject ? e.project_id === forProject.id : projectOf(e.project_id)?.pay_model !== "fixed",
+  );
+  const from = startOfDay(payment.period_start, timeZone).getTime();
+  const to = startOfDay(addDays(payment.period_end, 1), timeZone).getTime();
+  let expected = 0;
+  let units = 0;
+  for (const e of mine) {
+    if (e.kind !== "paid") continue;
+    const project = projectOf(e.project_id);
+    if (project?.pay_model === "hourly" && project.rate !== null) {
+      expected += entryHours(e, Math.min(now, to), from) * project.rate;
+    } else if (source.pay_model === "fixed" || source.rate === null) {
+      return null;
+    } else if (source.pay_model === "hourly") {
+      expected += entryHours(e, Math.min(now, to), from) * source.rate;
+    } else if (Date.parse(e.started_at) >= from && Date.parse(e.started_at) < to) {
+      units += e.units ?? 0;
+    }
+  }
+  if (source.pay_model === "per_task" && source.rate !== null) {
+    if (!units && expected === 0) return null;
+    expected += units * source.rate;
   }
   if (expected <= 0) return null;
   const difference = round2(expected - payment.amount);

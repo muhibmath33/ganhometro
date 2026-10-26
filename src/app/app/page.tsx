@@ -7,7 +7,9 @@ import { TaxReminders } from "@/components/app/TaxReminders";
 import { Card, PageSkeleton } from "@/components/app/ui";
 import { categoryName, getAppDictionary } from "@/i18n/app";
 import { latePayments } from "@/lib/app/alerts";
+import { loadInvoices } from "@/lib/app/invoices";
 import { monthSummary, taxProfile } from "@/lib/app/money";
+import { loadTimerSources } from "@/lib/app/projects";
 import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { dueReminders, loadTaxYear } from "@/lib/app/taxes";
 import { dayKey, startOfDay } from "@/lib/app/time";
@@ -20,38 +22,39 @@ async function Today() {
   const serverNow = requestNow();
   const dayStart = startOfDay(dayKey(new Date(serverNow), tz), tz).getTime();
 
-  const [{ data: sourceRows }, { data: categories }, { data: entryRows }] = await Promise.all([
-    supabase.from("income_sources").select("id, name, pay_model, archived_at").order("created_at"),
+  const [{ all: sources, projects, active }, { data: categories }, { data: entryRows }] = await Promise.all([
+    loadTimerSources(supabase, user.id),
     supabase.from("categories").select("id, kind, name, preset").is("archived_at", null).order("sort"),
     // Everything that touches today: finished today, or still running.
     supabase
       .from("time_entries")
-      .select("id, source_id, kind, category_id, started_at, ended_at")
+      .select("id, source_id, project_id, kind, category_id, started_at, ended_at")
       .or(`ended_at.gte.${new Date(dayStart).toISOString()},ended_at.is.null`)
       .order("started_at"),
   ]);
-  const sources = sourceRows ?? [];
   const entries = entryRows ?? [];
   const byId = new Map(sources.map((s) => [s.id, s]));
-  const active = sources.filter((s) => !s.archived_at).map((s) => ({ id: s.id, name: s.name, perTask: s.pay_model === "per_task" }));
+  const nameOf = (id: string | null) => (id ? (byId.get(id)?.name ?? "") : t.timer.noClient);
 
   const runningRow = entries.find((e) => !e.ended_at);
   const running: RunningEntry | null = runningRow
     ? {
         id: runningRow.id,
         sourceId: runningRow.source_id,
-        sourceName: byId.get(runningRow.source_id)?.name ?? "",
+        sourceName: nameOf(runningRow.source_id),
+        projectName: projects.find((p) => p.id === runningRow.project_id)?.name ?? null,
         kind: runningRow.kind,
         categoryId: runningRow.category_id,
         startedAt: Date.parse(runningRow.started_at),
-        perTask: byId.get(runningRow.source_id)?.pay_model === "per_task",
+        perTask: runningRow.source_id ? byId.get(runningRow.source_id)?.pay_model === "per_task" : false,
       }
     : null;
 
-  // Finished time today per platform (from midnight). The running entry is added live on the client.
-  const totals = new Map<string, TodayRow>();
-  const row = (id: string) => {
-    if (!totals.has(id)) totals.set(id, { sourceId: id, name: byId.get(id)?.name ?? "", paidMs: 0, unpaidMs: 0 });
+  // Finished time today per platform (from midnight), time without a client last. The running entry is
+  // added live on the client.
+  const totals = new Map<string | null, TodayRow>();
+  const row = (id: string | null) => {
+    if (!totals.has(id)) totals.set(id, { sourceId: id, name: nameOf(id), paidMs: 0, unpaidMs: 0 });
     return totals.get(id)!;
   };
   for (const e of entries) {
@@ -66,15 +69,16 @@ async function Today() {
 
   // Start with the platform used last today, else the first one.
   const last = entries.at(-1);
-  const defaultSourceId = last && active.some((s) => s.id === last.source_id) ? last.source_id : (active[0]?.id ?? null);
+  const defaultSourceId = last?.source_id && active.some((s) => s.id === last.source_id) ? last.source_id : (active[0]?.id ?? null);
   const date = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(serverNow);
 
   // This month's take-home: first for freelancers (what's left matters most to them), after the timer for others.
   const today = dayKey(new Date(serverNow), tz);
-  const [month, taxYear, late] = await Promise.all([
+  const [month, taxYear, late, invoices] = await Promise.all([
     monthSummary(supabase, profile, user.id, Number(today.slice(0, 4)), Number(today.slice(5, 7))),
     loadTaxYear(supabase, profile, user.id, Number(today.slice(0, 4)), today),
     latePayments(supabase, user.id, tz, today),
+    loadInvoices(supabase, user.id, today),
   ]);
   const takeHome = (
     <TakeHomeCard
@@ -97,7 +101,7 @@ async function Today() {
       </div>
 
       <TaxReminders t={t} locale={locale} mode={taxYear.mode} reminders={dueReminders(taxYear, today)} current={taxYear.months.at(-1)} />
-      <LateAlerts t={t} locale={locale} alerts={late} />
+      <LateAlerts t={t} locale={locale} alerts={late} invoices={invoices} />
 
       {freelancer && takeHome}
 
@@ -120,7 +124,14 @@ async function Today() {
               {t.today.seeLog}
             </Link>
           </div>
-          <TodayTotals t={t} locale={locale} rows={[...totals.values()]} running={running} dayStart={dayStart} serverNow={serverNow} />
+          <TodayTotals
+            t={t}
+            locale={locale}
+            rows={[...totals.values()].sort((a, b) => Number(a.sourceId === null) - Number(b.sourceId === null))}
+            running={running}
+            dayStart={dayStart}
+            serverNow={serverNow}
+          />
         </Card>
       </div>
 

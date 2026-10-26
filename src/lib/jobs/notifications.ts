@@ -7,12 +7,15 @@ import { getAppDictionary } from "@/i18n/app";
 import { fill, type Locale } from "@/i18n/config";
 import { getEmailDictionary } from "@/i18n/emails";
 import { latePayments } from "@/lib/app/alerts";
+import { loadInvoices } from "@/lib/app/invoices";
 import { monthSummary } from "@/lib/app/money";
 import { PROFILE_FIELDS, type Profile, profileLocale } from "@/lib/app/session";
 import { dueReminders, loadTaxYear } from "@/lib/app/taxes";
+import { currencySymbol } from "@/lib/app/sources";
 import { addDays, dayKey, formatDuration, startOfDay } from "@/lib/app/time";
+import { formatMoney } from "@/lib/calc";
 import { type Email, sendEmail } from "@/lib/email/send";
-import { darfReminderEmail, latePaymentEmail, weeklySummaryEmail } from "@/lib/email/templates";
+import { darfReminderEmail, latePaymentEmail, overdueInvoiceEmail, weeklySummaryEmail } from "@/lib/email/templates";
 import { entryHours } from "@/lib/money/realRate";
 import { adminClient } from "@/lib/supabase/admin";
 
@@ -48,7 +51,8 @@ async function sendOnce(admin: Admin, userId: string, type: "darf_reminder" | "l
 const monthName = (key: string, locale: Locale) => new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" }).format(new Date(`${key}-15T12:00:00Z`));
 const daysBetween = (from: string, to: string) => Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000);
 
-// Daily: a DARF (or DAS) reminder 5 days and 1 day before it's due, and an alert when a payment looks late.
+// Daily: a DARF (or DAS) reminder 5 days and 1 day before it's due, an alert when a payment looks late, and
+// one when an invoice passes its due date unpaid.
 export async function runDailyNotifications(now = new Date()) {
   const admin = adminClient();
   if (!admin) throw new Error("Supabase is not configured");
@@ -90,6 +94,23 @@ export async function runDailyNotifications(now = new Date()) {
         "late",
       );
     }
+    for (const invoice of await loadInvoices(admin, person.id, today)) {
+      if (invoice.state !== "overdue") continue;
+      const money = (n: number) => formatMoney(currencySymbol(invoice.currency), n, locale);
+      tally(
+        await sendOnce(admin, person.id, "late_payment", `invoice:${invoice.id}`, () =>
+          overdueInvoiceEmail(locale, person.email, {
+            id: invoice.id,
+            number: invoice.number,
+            client: invoice.sourceName,
+            amount: money(invoice.amount),
+            balance: money(invoice.balance),
+            due: formatDay(invoice.due_on, locale),
+          }),
+        ),
+        "late",
+      );
+    }
   }
   return counts;
 }
@@ -110,7 +131,7 @@ export async function runWeeklySummary(now = new Date()) {
     const thisMonday = addDays(today, -((weekday + 6) % 7));
     const lastMonday = addDays(thisMonday, -7);
 
-    const [{ data: entries }, { data: sources }, month, taxYear, late] = await Promise.all([
+    const [{ data: entries }, { data: sources }, month, taxYear, late, invoices] = await Promise.all([
       admin
         .from("time_entries")
         .select("source_id, kind, started_at, ended_at, units")
@@ -121,6 +142,7 @@ export async function runWeeklySummary(now = new Date()) {
       monthSummary(admin, person.profile, person.id, Number(today.slice(0, 4)), Number(today.slice(5, 7))),
       loadTaxYear(admin, person.profile, person.id, Number(today.slice(0, 4)), today),
       latePayments(admin, person.id, tz, today),
+      loadInvoices(admin, person.id, today),
     ]);
     const nowMs = now.getTime();
     const hoursOf = (list: NonNullable<typeof entries>) => list.reduce((sum, x) => sum + entryHours(x, nowMs), 0);
@@ -128,7 +150,7 @@ export async function runWeeklySummary(now = new Date()) {
     const unpaid = hoursOf((entries ?? []).filter((x) => x.kind === "unpaid"));
     const dur = (h: number) => formatDuration(h * 3_600_000, locale);
     const names = new Map((sources ?? []).map((s) => [s.id, s.name]));
-    const perSource = new Map<string, number>();
+    const perSource = new Map<string | null, number>();
     for (const x of entries ?? []) perSource.set(x.source_id, (perSource.get(x.source_id) ?? 0) + entryHours(x, nowMs));
 
     const attention = [
@@ -140,6 +162,16 @@ export async function runWeeklySummary(now = new Date()) {
         }),
       ),
       ...late.map((a) => fill(e.weekly.late, { source: a.name, payday: formatDay(a.payday, locale) })),
+      ...invoices
+        .filter((i) => i.state === "overdue")
+        .map((i) =>
+          fill(e.weekly.invoice, {
+            number: i.number,
+            client: i.sourceName,
+            amount: formatMoney(currencySymbol(i.currency), i.balance, locale),
+            due: formatDay(i.due_on, locale),
+          }),
+        ),
     ];
     if (paid + unpaid === 0 && month.count === 0 && !attention.length) {
       counts.quiet++;
@@ -153,7 +185,7 @@ export async function runWeeklySummary(now = new Date()) {
           paid + unpaid > 0
             ? { total: dur(paid + unpaid), paid: dur(paid), unpaid: dur(unpaid), share: `${Math.round((unpaid / (paid + unpaid)) * 100)}%` }
             : null,
-        platforms: [...perSource].map(([id, h]) => `${names.get(id) ?? "?"} ${dur(h)}`),
+        platforms: [...perSource].map(([id, h]) => `${id ? (names.get(id) ?? "?") : t.timer.noClient} ${dur(h)}`),
         month: monthName(today.slice(0, 7), locale),
         received: month.count ? brl(month.takeHome.received, locale) : null,
         kept: month.count ? brl(month.takeHome.kept, locale) : null,

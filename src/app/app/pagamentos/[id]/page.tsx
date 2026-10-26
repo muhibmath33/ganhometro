@@ -6,6 +6,7 @@ import { ConfirmDelete } from "@/components/app/ConfirmDelete";
 import { PaymentForm } from "@/components/app/PaymentForm";
 import { Card, PageSkeleton } from "@/components/app/ui";
 import { getAppDictionary } from "@/i18n/app";
+import { loadPaymentSources } from "@/lib/app/invoices";
 import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { dayKey } from "@/lib/app/time";
 
@@ -14,15 +15,19 @@ const editable = (n: number | null, locale: string) => (n === null ? "" : locale
 
 async function EditPayment({ params }: { params: PageProps<"/app/pagamentos/[id]">["params"] }) {
   const { id } = await params;
-  const { supabase, profile } = await requireUser();
+  const { supabase, profile, user } = await requireUser();
   const locale = profileLocale(profile);
   const t = getAppDictionary(locale);
   // RLS only returns the row if it belongs to this user.
   const { data: payment } = await supabase.from("payments").select("*").eq("id", id).maybeSingle();
   if (!payment) notFound();
-  const { data: sourceRows } = await supabase.from("income_sources").select("id, name, currency, archived_at").order("created_at");
-  // Active ones, plus the payment's own source even if archived since.
-  const sources = (sourceRows ?? []).filter((s) => !s.archived_at || s.id === payment.source_id);
+  const today = dayKey(new Date(requestNow()), profile.timezone);
+  // Active ones, plus the payment's own source, project and invoice even if archived or settled since.
+  const sources = await loadPaymentSources(supabase, user.id, today, {
+    sourceId: payment.source_id,
+    projectId: payment.project_id,
+    invoiceId: payment.invoice_id,
+  });
 
   return (
     <Card className="mx-auto w-full max-w-xl">
@@ -34,11 +39,14 @@ async function EditPayment({ params }: { params: PageProps<"/app/pagamentos/[id]
       </div>
       <PaymentForm
         t={t}
+        locale={locale}
         sources={sources}
-        maxDate={dayKey(new Date(requestNow()), profile.timezone)}
+        maxDate={today}
         values={{
           id: payment.id,
           sourceId: payment.source_id,
+          projectId: payment.project_id ?? "",
+          invoiceId: payment.invoice_id ?? "",
           amount: editable(Number(payment.amount), locale),
           currency: payment.currency,
           receivedOn: payment.received_on,

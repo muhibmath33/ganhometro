@@ -4,16 +4,17 @@ import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { startTimer, stopTimer, switchTimer, type TimerState } from "@/app/app/actions";
 import type { AppDictionary } from "@/i18n/app";
-import type { Category, EntryKind } from "@/lib/app/entries";
+import { type Category, type EntryKind, NO_CLIENT } from "@/lib/app/entries";
 import { formatClock, formatDuration } from "@/lib/app/time";
 import { fieldInput, fieldLabel } from "./SourceFields";
 import { Chip, KindBadge, legendClass, SplitBar, SplitLegend } from "./ui";
 
-export type TimerSource = { id: string; name: string; perTask: boolean };
+export type TimerSource = { id: string; name: string; perTask: boolean; projects: { id: string; name: string }[] };
 export type RunningEntry = {
   id: string;
-  sourceId: string;
+  sourceId: string | null; // null: time without a client
   sourceName: string;
+  projectName: string | null;
   kind: EntryKind;
   categoryId: string | null;
   startedAt: number;
@@ -65,13 +66,24 @@ export function Timer(props: {
 function StartTimer({ t, sources, categories, defaultSourceId }: Parameters<typeof Timer>[0]) {
   const [state, action, pending] = useActionState<TimerState, FormData>(startTimer, null);
   const [sourceId, setSourceId] = useState(defaultSourceId ?? sources[0].id);
-  const [kind, setKind] = useState<EntryKind>("paid");
+  const [projectId, setProjectId] = useState("");
+  const [chosenKind, setKind] = useState<EntryKind>("paid");
+  const noClient = sourceId === NO_CLIENT;
+  // Time without a client is always unpaid.
+  const kind = noClient ? "unpaid" : chosenKind;
   const ofKind = categories.filter((c) => c.kind === kind);
   const [categoryId, setCategoryId] = useState(ofKind[0]?.id ?? "");
+  const projects = sources.find((s) => s.id === sourceId)?.projects ?? [];
 
   const chooseKind = (k: EntryKind) => {
     setKind(k);
     setCategoryId(categories.find((c) => c.kind === k)?.id ?? "");
+  };
+  const chooseSource = (id: string) => {
+    const nextKind = id === NO_CLIENT ? "unpaid" : chosenKind;
+    if (nextKind !== kind) setCategoryId(categories.find((c) => c.kind === nextKind)?.id ?? "");
+    setSourceId(id);
+    setProjectId("");
   };
 
   return (
@@ -80,23 +92,49 @@ function StartTimer({ t, sources, categories, defaultSourceId }: Parameters<type
         <legend className={legendClass}>{t.timer.source}</legend>
         <div className="flex flex-wrap gap-2">
           {sources.map((s) => (
-            <Chip key={s.id} name="source_id" value={s.id} checked={sourceId === s.id} onChange={() => setSourceId(s.id)}>
+            <Chip key={s.id} name="source_id" value={s.id} checked={sourceId === s.id} onChange={() => chooseSource(s.id)}>
               {s.name}
             </Chip>
           ))}
+          <Chip name="source_id" value={NO_CLIENT} tone="unpaid" checked={noClient} onChange={() => chooseSource(NO_CLIENT)}>
+            {t.timer.noClient}
+          </Chip>
         </div>
       </fieldset>
 
-      <fieldset className="m-0 border-0 p-0">
-        <legend className={legendClass}>{t.timer.kind}</legend>
-        <div className="grid grid-cols-2 gap-2">
-          {(["paid", "unpaid"] as const).map((k) => (
-            <Chip key={k} name="kind" value={k} tone={k} checked={kind === k} onChange={() => chooseKind(k)}>
-              {t.kinds[k]}
+      {projects.length > 0 && (
+        <fieldset className="m-0 border-0 p-0">
+          <legend className={legendClass}>{t.timer.project}</legend>
+          <div className="flex flex-wrap gap-2">
+            <Chip name="project_id" value="" checked={projectId === ""} onChange={() => setProjectId("")}>
+              {t.timer.noProject}
             </Chip>
-          ))}
-        </div>
-      </fieldset>
+            {projects.map((p) => (
+              <Chip key={p.id} name="project_id" value={p.id} checked={projectId === p.id} onChange={() => setProjectId(p.id)}>
+                {p.name}
+              </Chip>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      {noClient ? (
+        <>
+          <input type="hidden" name="kind" value="unpaid" />
+          <p className="m-0 rounded-[12px] bg-amber-tint px-4 py-3 text-[14px] text-amber-ink">{t.timer.noClientNote}</p>
+        </>
+      ) : (
+        <fieldset className="m-0 border-0 p-0">
+          <legend className={legendClass}>{t.timer.kind}</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {(["paid", "unpaid"] as const).map((k) => (
+              <Chip key={k} name="kind" value={k} tone={k} checked={kind === k} onChange={() => chooseKind(k)}>
+                {t.kinds[k]}
+              </Chip>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       {/* One category of a kind (usually "paid task") needs no choice. */}
       {ofKind.length > 1 ? (
@@ -149,6 +187,7 @@ function RunningTimer({ t, categories, running, serverNow }: Parameters<typeof T
         <span className="flex items-center gap-2 text-[14px] font-semibold text-ink-soft">
           <span className="size-2 animate-pulse rounded-full bg-brand" aria-hidden="true" />
           {t.timer.running} · {running.sourceName}
+          {running.projectName && ` · ${running.projectName}`}
         </span>
         <span role="timer" className="font-mono text-[52px] leading-none font-semibold tracking-[-0.02em] tabular-nums">
           {formatClock(elapsed)}
@@ -223,15 +262,18 @@ function RunningTimer({ t, categories, running, serverNow }: Parameters<typeof T
             <span aria-hidden="true">■</span> {long ? t.timer.stopAnyway : t.timer.stop}
           </button>
         )}
-        <button type="submit" name="target" value={`${other}:${firstOther?.id ?? ""}`} disabled={pending} className={secondaryButton}>
-          {t.timer.switchTo[other]}
-        </button>
+        {/* Time without a client can't become paid. */}
+        {(running.sourceId || other === "unpaid") && (
+          <button type="submit" name="target" value={`${other}:${firstOther?.id ?? ""}`} disabled={pending} className={secondaryButton}>
+            {t.timer.switchTo[other]}
+          </button>
+        )}
       </div>
     </form>
   );
 }
 
-export type TodayRow = { sourceId: string; name: string; paidMs: number; unpaidMs: number };
+export type TodayRow = { sourceId: string | null; name: string; paidMs: number; unpaidMs: number };
 
 // Today's hours per platform. The running entry keeps adding to its platform's total.
 export function TodayTotals({
@@ -269,7 +311,7 @@ export function TodayTotals({
     <div className="flex flex-col gap-3">
       <ul className="m-0 flex list-none flex-col gap-2 p-0">
         {live.map((r) => (
-          <li key={r.sourceId} className="flex flex-col gap-2 rounded-[12px] bg-paper px-4 py-3">
+          <li key={r.sourceId ?? NO_CLIENT} className="flex flex-col gap-2 rounded-[12px] bg-paper px-4 py-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-[15px] font-bold">{r.name}</span>
               <span className="font-mono text-[15px] font-semibold">{formatDuration(r.paidMs + r.unpaidMs, locale)}</span>

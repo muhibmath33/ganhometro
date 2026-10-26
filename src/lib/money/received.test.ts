@@ -80,6 +80,26 @@ test("per task: tasks × rate", () => {
   assert.equal(u.flagged, true);
 });
 
+test("underpayment with projects: own hourly rate counts, fixed-price hours don't", () => {
+  const source = { pay_model: "hourly" as const, rate: 20, commission_pct: null };
+  const projects = [
+    { id: "own", pay_model: "hourly" as const, rate: 40 },
+    { id: "fixed", pay_model: "fixed" as const, rate: null },
+  ];
+  const period = { received_on: "2026-10-08", period_start: "2026-10-01", period_end: "2026-10-07" };
+  const entries = [
+    { ...entry("2026-10-01", 9, 11), project_id: null }, // 2 h × 20 = 40
+    { ...entry("2026-10-02", 9, 12), project_id: "own" }, // 3 h × 40 = 120
+    { ...entry("2026-10-03", 9, 17), project_id: "fixed" }, // paid by the fixed price, left out
+  ];
+  const ctx = { timeZone: SP, now: NOW, projects };
+  close(checkUnderpayment(source, { amount: 160, ...period }, entries, ctx)!.expected, 160);
+  close(checkUnderpayment(source, { amount: 100, ...period, project_id: "own" }, entries, ctx)!.expected, 120);
+  assert.equal(checkUnderpayment(source, { amount: 100, ...period, project_id: "fixed" }, entries, ctx), null);
+  assert.equal(checkUnderpayment(source, { amount: 100, ...period, invoice_id: "i1" }, entries, ctx), null); // the invoice tracks it
+  assert.equal(checkUnderpayment({ pay_model: "retainer", rate: 2000, commission_pct: null }, { amount: 1, ...period }, entries, ctx), null);
+});
+
 test("take-home as an individual: commission, fees, INSS and carnê-leão", () => {
   const t = monthTakeHome(
     [

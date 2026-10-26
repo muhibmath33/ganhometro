@@ -20,6 +20,12 @@ const pt = {
     schedules: { weekly: "toda {weekday}", biweekly: "a cada duas semanas, às {weekday}s", monthly: "todo dia {day}" },
     weekdays: ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"],
   },
+  invoice: {
+    subject: "Fatura {number} para {client} venceu",
+    body: "A fatura {number} para {client}, de {amount}, venceu em {due}. Ainda falta receber {balance}.",
+    next: "Já recebeu? Registre o pagamento ligado à fatura. Ainda não? Vale mandar um lembrete educado ao cliente.",
+    button: "Ver fatura",
+  },
   weekly: {
     subject: "Sua semana no Ganhômetro: {from} a {to}",
     title: "Sua semana: {from} a {to}",
@@ -32,6 +38,7 @@ const pt = {
     noPayments: "Nenhum pagamento registrado em {month} ainda.",
     attention: "Atenção",
     late: "{source}: o pagamento esperado em {payday} ainda não está registrado.",
+    invoice: "Fatura {number} para {client}: falta {amount}, venceu em {due}.",
     button: "Abrir o painel",
   },
   footer: {
@@ -62,6 +69,12 @@ const en: EmailDictionary = {
     schedules: { weekly: "every {weekday}", biweekly: "every other {weekday}", monthly: "on day {day} of each month" },
     weekdays: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
   },
+  invoice: {
+    subject: "Invoice {number} to {client} is overdue",
+    body: "Invoice {number} to {client}, for {amount}, was due on {due}. {balance} is still to be paid.",
+    next: "Already received it? Log the payment and link it to the invoice. Not yet? A polite reminder to the client is worth sending.",
+    button: "See invoice",
+  },
   weekly: {
     subject: "Your week in Ganhômetro: {from} to {to}",
     title: "Your week: {from} to {to}",
@@ -74,6 +87,7 @@ const en: EmailDictionary = {
     noPayments: "No payments logged in {month} yet.",
     attention: "Heads-up",
     late: "{source}: the payment expected on {payday} isn't logged yet.",
+    invoice: "Invoice {number} to {client}: {amount} to go, due {due}.",
     button: "Open the dashboard",
   },
   footer: {
