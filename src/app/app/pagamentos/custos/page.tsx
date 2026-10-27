@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ProPage } from "@/components/app/ProGate";
 import { Card, PageSkeleton } from "@/components/app/ui";
 import { getAppDictionary } from "@/i18n/app";
 import { fill } from "@/i18n/config";
 import { loadFeeAudit } from "@/lib/app/money";
-import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
+import { isPro, profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { dayKey } from "@/lib/app/time";
 import { formatMoney } from "@/lib/calc";
 
@@ -15,6 +16,7 @@ async function Costs({ searchParams }: { searchParams: PageProps<"/app/pagamento
   const { supabase, profile, user } = await requireUser();
   const locale = profileLocale(profile);
   const t = getAppDictionary(locale);
+  if (!isPro(profile)) return <ProPage t={t} feature="fees" title={t.fees.title} />;
   const f = t.fees;
   const params = await searchParams;
   const period: Period = PERIODS.includes(params.meses as Period) ? (params.meses as Period) : "12";

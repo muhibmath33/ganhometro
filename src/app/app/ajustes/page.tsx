@@ -82,7 +82,10 @@ async function Settings() {
         <h2 className="m-0 text-[17px] font-bold">{t.settings.account}</h2>
         <p className="m-0 text-[15px] text-ink-soft">{t.settings.signedInAs.replace("{email}", user.email)}</p>
         <p className="m-0 text-[15px] text-ink-soft">
-          {t.settings.plan}: <strong className="text-ink">{t.settings.plans[isPro(profile) ? "pro" : "free"]}</strong>
+          {t.settings.plan}: <strong className="text-ink">{t.settings.plans[isPro(profile) ? "pro" : "free"]}</strong> ·{" "}
+          <Link href="/app/plano" className="font-semibold">
+            {t.plans.title}
+          </Link>
         </p>
         <form action={signOut}>
           <button type="submit" className="min-h-11 cursor-pointer rounded-[10px] border border-line bg-white px-4 font-sans text-[15px] font-semibold text-ink">

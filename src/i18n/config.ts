@@ -11,6 +11,7 @@ export const routes = {
   calcTakeHome: { "pt-BR": "/calculadoras/quanto-sobra", en: "/en/calculators/take-home-pay" },
   calcCompany: { "pt-BR": "/calculadoras/pf-ou-cnpj", en: "/en/calculators/individual-or-company" },
   calcCarneLeao: { "pt-BR": "/calculadoras/carne-leao", en: "/en/calculators/carne-leao" },
+  founding: { "pt-BR": "/fundador", en: "/en/founding" },
 } as const;
 
 export type RouteKey = keyof typeof routes;

@@ -24,7 +24,27 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "categories": {
+            "billing_events": {
+                  Row: {
+                    "added": string | null,"amount": number | null,"checkout_id": string | null,"created_at": string,"currency": string | null,"email": string | null,"grant_from": string | null,"grant_months": number | null,"grant_until": string | null,"granted_at": string | null,"id": string,"method": string | null,"product": string,"provider": string,"provider_payment_id": string,"revoked_at": string | null,"status": string,"updated_at": string,"user_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "added"?: string | null,"amount"?: number | null,"checkout_id"?: string | null,"created_at"?: string,"currency"?: string | null,"email"?: string | null,"grant_from"?: string | null,"grant_months"?: number | null,"grant_until"?: string | null,"granted_at"?: string | null,"id"?: string,"method"?: string | null,"product": string,"provider"?: string,"provider_payment_id": string,"revoked_at"?: string | null,"status": string,"updated_at"?: string,"user_id"?: string | null
+                  }
+                  Update: {
+                    "added"?: string | null,"amount"?: number | null,"checkout_id"?: string | null,"created_at"?: string,"currency"?: string | null,"email"?: string | null,"grant_from"?: string | null,"grant_months"?: number | null,"grant_until"?: string | null,"granted_at"?: string | null,"id"?: string,"method"?: string | null,"product"?: string,"provider"?: string,"provider_payment_id"?: string,"revoked_at"?: string | null,"status"?: string,"updated_at"?: string,"user_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "billing_events_checkout_id_fkey"
+      columns: ["checkout_id"]
+isOneToOne: false
+      referencedRelation: "checkouts"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"categories": {
                   Row: {
                     "archived_at": string | null,"created_at": string,"id": string,"kind": Database["public"]['Enums']["entry_kind"],"name": string,"preset": string | null,"sort": number,"user_id": string
                   }
@@ -34,6 +54,20 @@ export type Database = {
                   }
                   Update: {
                     "archived_at"?: string | null,"created_at"?: string,"id"?: string,"kind"?: Database["public"]['Enums']["entry_kind"],"name"?: string,"preset"?: string | null,"sort"?: number,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"checkouts": {
+                  Row: {
+                    "amount": number,"created_at": string,"email": string | null,"id": string,"product": string,"provider": string,"provider_ref": string | null,"user_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"created_at"?: string,"email"?: string | null,"id"?: string,"product": string,"provider"?: string,"provider_ref"?: string | null,"user_id"?: string | null
+                  }
+                  Update: {
+                    "amount"?: number,"created_at"?: string,"email"?: string | null,"id"?: string,"product"?: string,"provider"?: string,"provider_ref"?: string | null,"user_id"?: string | null
                   }
                   Relationships: [
                     
@@ -126,14 +160,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "accountant_cost": number,"created_at": string,"dependents": number,"doc_details": string | null,"doc_name": string | null,"email_reminders": boolean,"email_weekly": boolean,"emergency_months": number,"emergency_pct": number,"id": string,"inss_plan": string,"locale": string,"onboarded_at": string | null,"payment_instructions": string | null,"plan": Database["public"]['Enums']["plan"],"pro_until": string | null,"reserve_13th": boolean,"reserve_vacation": boolean,"salary_target": number | null,"tax_mode": string,"timezone": string,"work_type": Database["public"]['Enums']["work_type"] | null
+                    "accountant_cost": number,"created_at": string,"dependents": number,"doc_details": string | null,"doc_name": string | null,"email_reminders": boolean,"email_weekly": boolean,"emergency_months": number,"emergency_pct": number,"id": string,"inss_plan": string,"locale": string,"onboarded_at": string | null,"payment_instructions": string | null,"plan": Database["public"]['Enums']["plan"],"pro_until": string | null,"reserve_13th": boolean,"reserve_vacation": boolean,"salary_target": number | null,"subscription_id": string | null,"subscription_next": string | null,"subscription_status": string | null,"tax_mode": string,"timezone": string,"work_type": Database["public"]['Enums']["work_type"] | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "accountant_cost"?: number,"created_at"?: string,"dependents"?: number,"doc_details"?: string | null,"doc_name"?: string | null,"email_reminders"?: boolean,"email_weekly"?: boolean,"emergency_months"?: number,"emergency_pct"?: number,"id": string,"inss_plan"?: string,"locale"?: string,"onboarded_at"?: string | null,"payment_instructions"?: string | null,"plan"?: Database["public"]['Enums']["plan"],"pro_until"?: string | null,"reserve_13th"?: boolean,"reserve_vacation"?: boolean,"salary_target"?: number | null,"tax_mode"?: string,"timezone"?: string,"work_type"?: Database["public"]['Enums']["work_type"] | null
+                    "accountant_cost"?: number,"created_at"?: string,"dependents"?: number,"doc_details"?: string | null,"doc_name"?: string | null,"email_reminders"?: boolean,"email_weekly"?: boolean,"emergency_months"?: number,"emergency_pct"?: number,"id": string,"inss_plan"?: string,"locale"?: string,"onboarded_at"?: string | null,"payment_instructions"?: string | null,"plan"?: Database["public"]['Enums']["plan"],"pro_until"?: string | null,"reserve_13th"?: boolean,"reserve_vacation"?: boolean,"salary_target"?: number | null,"subscription_id"?: string | null,"subscription_next"?: string | null,"subscription_status"?: string | null,"tax_mode"?: string,"timezone"?: string,"work_type"?: Database["public"]['Enums']["work_type"] | null
                   }
                   Update: {
-                    "accountant_cost"?: number,"created_at"?: string,"dependents"?: number,"doc_details"?: string | null,"doc_name"?: string | null,"email_reminders"?: boolean,"email_weekly"?: boolean,"emergency_months"?: number,"emergency_pct"?: number,"id"?: string,"inss_plan"?: string,"locale"?: string,"onboarded_at"?: string | null,"payment_instructions"?: string | null,"plan"?: Database["public"]['Enums']["plan"],"pro_until"?: string | null,"reserve_13th"?: boolean,"reserve_vacation"?: boolean,"salary_target"?: number | null,"tax_mode"?: string,"timezone"?: string,"work_type"?: Database["public"]['Enums']["work_type"] | null
+                    "accountant_cost"?: number,"created_at"?: string,"dependents"?: number,"doc_details"?: string | null,"doc_name"?: string | null,"email_reminders"?: boolean,"email_weekly"?: boolean,"emergency_months"?: number,"emergency_pct"?: number,"id"?: string,"inss_plan"?: string,"locale"?: string,"onboarded_at"?: string | null,"payment_instructions"?: string | null,"plan"?: Database["public"]['Enums']["plan"],"pro_until"?: string | null,"reserve_13th"?: boolean,"reserve_vacation"?: boolean,"salary_target"?: number | null,"subscription_id"?: string | null,"subscription_next"?: string | null,"subscription_status"?: string | null,"tax_mode"?: string,"timezone"?: string,"work_type"?: Database["public"]['Enums']["work_type"] | null
                   }
                   Relationships: [
                     
@@ -224,8 +258,14 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "is_pro":
+            "apply_billing_event":
+{ Args: { "event_id": string }; Returns: string
+                           },
+"is_pro":
 { Args: { "uid": string }; Returns: boolean
+                           },
+"revoke_billing_event":
+{ Args: { "event_id": string }; Returns: string
                            }
           }
           Enums: {

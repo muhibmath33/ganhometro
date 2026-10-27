@@ -26,7 +26,8 @@ export function FormMessage({
   errors?: Record<string, string>;
 }) {
   if (state?.error) {
-    const text = state.error === "freeLimit" ? t.source.freeLimit : (errors[state.error] ?? t.common.genericError);
+    const text =
+      state.error === "freeLimit" ? t.source.freeLimit : state.error === "pro" ? t.plans.needPro : (errors[state.error] ?? t.common.genericError);
     return (
       <p role="alert" className="m-0 text-[14px] font-semibold text-amber-ink">
         {text}

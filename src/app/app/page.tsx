@@ -10,7 +10,7 @@ import { latePayments } from "@/lib/app/alerts";
 import { loadInvoices } from "@/lib/app/invoices";
 import { monthSummary, taxProfile } from "@/lib/app/money";
 import { loadTimerSources } from "@/lib/app/projects";
-import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
+import { isPro, profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { dueReminders, loadTaxYear } from "@/lib/app/taxes";
 import { dayKey, startOfDay } from "@/lib/app/time";
 
@@ -100,8 +100,12 @@ async function Today() {
         <p className="m-0 text-[15px] text-ink-soft first-letter:uppercase">{date}</p>
       </div>
 
-      <TaxReminders t={t} locale={locale} mode={taxYear.mode} reminders={dueReminders(taxYear, today)} current={taxYear.months.at(-1)} />
-      <LateAlerts t={t} locale={locale} alerts={late} invoices={invoices} />
+      {isPro(profile) && (
+        <>
+          <TaxReminders t={t} locale={locale} mode={taxYear.mode} reminders={dueReminders(taxYear, today)} current={taxYear.months.at(-1)} />
+          <LateAlerts t={t} locale={locale} alerts={late} invoices={invoices} />
+        </>
+      )}
 
       {freelancer && takeHome}
 

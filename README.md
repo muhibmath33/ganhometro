@@ -79,6 +79,9 @@ server store exchange rates), add any long random `CRON_SECRET`, then restart `n
 | `src/app/admin`, `src/components/admin`, `src/lib/admin` | Private waitlist dashboard and CSV export |
 | `src/app/app/` | The app: `page.tsx` (Today, with the timer), `painel` (dashboard), `registro` (time log), `fontes` (platforms and clients), `ajustes` (settings), `entrar` (sign in), `boas-vindas` (onboarding), `auth/confirm` (email link) |
 | `src/app/app/pagamentos/` | Payments: list and quick add, edit, `importar` (statement import) and `custos` (exchange and fee audit by method) |
+| `src/app/app/plano/`, `src/app/fundador/`, `src/app/en/founding/` | Plan and billing page; the public founding offer page |
+| `src/lib/billing/` | Plans and prices, Mercado Pago API, and processing payments and subscriptions (`process.ts`) |
+| `src/app/api/mercadopago/webhook/` | Mercado Pago notifications (signature checked) |
 | `src/app/app/registro/importar` | Import hours from Toggl or Clockify (CSV read in the browser; descriptions never leave it) |
 | `src/app/app/faturas/` | Invoices: what's owed, new invoice (amount from logged hours), each invoice with its payments |
 | `src/app/app/fontes/[id]` | A platform or client, and its projects (same pay, own hourly rate, or fixed price) |
@@ -184,6 +187,27 @@ Not needed for the waitlist. Xinning owns the account.
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`. Add a long random
    `CRON_SECRET` too: Vercel Cron sends it when it runs the jobs in `vercel.json`. For the app's own emails, add
    `RESEND_API_KEY` (the same Resend account as step 5) and `EMAIL_FROM`. Then redeploy.
+
+### 5. Mercado Pago (plans and checkout)
+
+Gabriel opens the account (CPF is enough) and adds Xinning as a collaborator. Then, in Mercado Pago:
+
+1. **Suas integrações → Criar aplicação** (Checkout Pro and Assinaturas). Copy the **Access token** into Vercel as
+   `MP_ACCESS_TOKEN`. Use the test credentials first, then the production ones.
+2. **Webhooks:** URL `https://ganhometro.com.br/api/mercadopago/webhook`, events **Pagamentos** and **Planos e
+   assinaturas**. Copy the **assinatura secreta** into Vercel as `MP_WEBHOOK_SECRET`.
+3. For the founding sale, set `FOUNDING_UNTIL` (last day on sale) and `LAUNCH_DATE` (the day founding buyers' year
+   starts). The public page is `/fundador` (`/en/founding`).
+4. Redeploy. The plan page is `/app/plano`.
+
+How it works: every payment is read back from Mercado Pago before anything changes, recorded once in
+`billing_events`, and Pro time is granted or taken back (refunds, chargebacks) by database functions, so a repeated
+notification changes nothing. A founding purchase made before signing up is applied when that email creates its
+account.
+
+**Testing locally without Mercado Pago:** run `node scripts/mock-mercadopago.mjs` (a fake Mercado Pago on port 54399:
+checkout page, signed notifications, refunds, renewals) and start the app with `MP_API_URL=http://127.0.0.1:54399 MP_ACCESS_TOKEN=TEST-local MP_WEBHOOK_SECRET=test-webhook-secret
+FOUNDING_UNTIL=2026-12-31 LAUNCH_DATE=2027-01-15 npm run dev`.
 
 ## Admin page (`/admin`)
 

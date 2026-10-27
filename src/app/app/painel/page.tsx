@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ProGate } from "@/components/app/ProGate";
 import { ReservesCard } from "@/components/app/ReservesCard";
 import { TakeHomeCard } from "@/components/app/TakeHomeCard";
 import { Card, PageSkeleton, SplitBar, SplitLegend } from "@/components/app/ui";
 import { categoryName, getAppDictionary } from "@/i18n/app";
 import { fill } from "@/i18n/config";
 import { reserveSettings, takeHomeHistory, taxProfile } from "@/lib/app/money";
-import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
+import { isPro, profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { currencySymbol } from "@/lib/app/sources";
 import { addDays, dayKey, formatDuration, startOfDay } from "@/lib/app/time";
 import { formatMoney } from "@/lib/calc";
@@ -212,7 +213,8 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/app/paine
       </nav>
 
       <TakeHomeCard t={t} locale={locale} month={monthLabel} takeHome={month.takeHome} count={month.count} mode={taxProfile(profile).tax_mode} />
-      {month.count > 0 && (
+      {month.count > 0 && !isPro(profile) && <ProGate t={t} feature="reserves" title={t.settings.reservesTitle} />}
+      {month.count > 0 && isPro(profile) && (
         <ReservesCard
           t={t}
           locale={locale}

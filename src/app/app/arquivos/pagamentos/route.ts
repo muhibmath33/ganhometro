@@ -1,6 +1,6 @@
 // The payments spreadsheet for the accountant (CSV): ?de=2026-08&ate=2026-10&lang=pt
 import { parseDocLang } from "@/i18n/documents";
-import { profileLocale, requireUser } from "@/lib/app/session";
+import { isPro, profileLocale, requireUser } from "@/lib/app/session";
 import { dayKey } from "@/lib/app/time";
 import { fileName } from "@/lib/documents/format";
 import { isMonthKey, loadIncome } from "@/lib/documents/load";
@@ -13,6 +13,8 @@ const HEADERS = {
 
 export async function GET(request: Request) {
   const { supabase, profile, user } = await requireUser();
+  // Documents are Pro.
+  if (!isPro(profile)) return Response.redirect(new URL("/app/plano", request.url), 303);
   const params = new URL(request.url).searchParams;
   const from = params.get("de");
   const to = params.get("ate");

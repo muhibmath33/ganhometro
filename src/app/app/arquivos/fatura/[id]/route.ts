@@ -2,7 +2,7 @@
 import { createElement } from "react";
 import { parseDocLang } from "@/i18n/documents";
 import { loadInvoices } from "@/lib/app/invoices";
-import { requireUser } from "@/lib/app/session";
+import { isPro, requireUser } from "@/lib/app/session";
 import { dayKey } from "@/lib/app/time";
 import { fileName } from "@/lib/documents/format";
 import { holderOf, loadTimesheet } from "@/lib/documents/load";
@@ -11,6 +11,8 @@ import { InvoicePdf, pdfResponse } from "@/lib/documents/pdf";
 export async function GET(request: Request, { params }: RouteContext<"/app/arquivos/fatura/[id]">) {
   const { id } = await params;
   const { supabase, profile, user } = await requireUser();
+  // Documents are Pro.
+  if (!isPro(profile)) return Response.redirect(new URL("/app/plano", request.url), 303);
   const search = new URL(request.url).searchParams;
   const lang = parseDocLang(search.get("lang"), "en");
   const now = Date.now();

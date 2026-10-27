@@ -71,7 +71,7 @@ export function InvoiceForm({ t, locale, sources, values }: { t: AppDictionary; 
     startCalc(async () => {
       const r = await invoiceFromHours({ sourceId, projectId, from: periodStart, to: periodEnd || issuedOn });
       if ("error" in r) {
-        setCalc(r.error === "noHours" ? f.noHours : r.error === "noRate" ? f.noRate : t.invoices.errors.period);
+        setCalc(r.error === "noHours" ? f.noHours : r.error === "noRate" ? f.noRate : r.error === "pro" ? t.plans.needPro : t.invoices.errors.period);
         return;
       }
       const symbol = currencySymbol(currency);

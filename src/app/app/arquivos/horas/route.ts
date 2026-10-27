@@ -2,7 +2,7 @@
 // ?fonte=<source id>&projeto=<project id>&de=2026-10-01&ate=2026-10-14&lang=en&tipo=pagas|todas
 import { createElement } from "react";
 import { parseDocLang } from "@/i18n/documents";
-import { requireUser } from "@/lib/app/session";
+import { isPro, requireUser } from "@/lib/app/session";
 import { addDays, dayKey, isDay } from "@/lib/app/time";
 import { fileName } from "@/lib/documents/format";
 import { holderOf, loadReview, loadTimesheet } from "@/lib/documents/load";
@@ -10,6 +10,8 @@ import { pdfResponse, TimesheetPdf } from "@/lib/documents/pdf";
 
 export async function GET(request: Request) {
   const { supabase, profile, user } = await requireUser();
+  // Documents are Pro.
+  if (!isPro(profile)) return Response.redirect(new URL("/app/plano", request.url), 303);
   const params = new URL(request.url).searchParams;
   const sourceId = params.get("fonte") ?? "";
   const from = params.get("de") ?? "";

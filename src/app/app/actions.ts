@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { CATEGORY_PRESETS } from "@/i18n/app";
+import { CATEGORY_PRESETS, getAppDictionary } from "@/i18n/app";
 import { type EntryError, type EntryKind, MIN_TIMER_MS, NO_CLIENT, parseEntryForm, parseKind, parseUnits } from "@/lib/app/entries";
 import { METHODS, type Method, type PaymentError, parsePaymentForm } from "@/lib/app/payments";
 import { type InvoiceError, parseInvoiceForm } from "@/lib/app/invoices";
@@ -12,12 +12,56 @@ import { addDays, dayKey, isDay, zonedToUtc } from "@/lib/app/time";
 import { parseNumber } from "@/lib/calc";
 import { amountFromHours } from "@/lib/money/invoices";
 import { defaultPeriods } from "@/lib/money/received";
-import { getSession, requireUser } from "@/lib/app/session";
+import { getSession, isPro, profileLocale, requireUser } from "@/lib/app/session";
+import { billingConfigured, cancelSubscription as cancelMpSubscription, createPreference, createSubscription } from "@/lib/billing/mercadopago";
+import { foundingOpen, isProduct, PRODUCTS } from "@/lib/billing/plans";
+import { adminClient } from "@/lib/supabase/admin";
 import { site } from "@/lib/site";
 import type { Database } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// --- Plans and checkout (Mercado Pago) -----------------------------------------------
+
+// Starts a checkout: records it (its id goes to Mercado Pago as the reference), then sends the person to
+// Mercado Pago's page. The monthly plan is a card subscription; the others are one-time payments.
+export async function startCheckout(form: FormData) {
+  const { user, profile } = await requireUser();
+  const product = String(form.get("product") ?? "");
+  const admin = adminClient();
+  const today = dayKey(new Date(), profile.timezone);
+  if (!isProduct(product) || !admin || !billingConfigured() || (product === "founding" && !foundingOpen(today, process.env.FOUNDING_UNTIL)))
+    redirect("/app/plano?erro=indisponivel");
+  const { amount } = PRODUCTS[product];
+  const { data: checkout } = await admin
+    .from("checkouts")
+    .insert({ user_id: user.id, email: user.email.toLowerCase() || null, product, amount })
+    .select("id")
+    .single();
+  if (!checkout) redirect("/app/plano?erro=1");
+  const title = getAppDictionary(profileLocale(profile)).plans.products[product].title;
+  const urls = { backUrl: `${site.url}/app/plano`, notificationUrl: `${site.url}/api/mercadopago/webhook` };
+  const started =
+    product === "monthly"
+      ? await createSubscription({ checkoutId: checkout.id, reason: title, amount, email: user.email, ...urls })
+      : await createPreference({ checkoutId: checkout.id, title, amount, email: user.email || null, ...urls });
+  if (!started?.init_point) redirect("/app/plano?erro=1");
+  await admin.from("checkouts").update({ provider_ref: started.id }).eq("id", checkout.id);
+  redirect(started.init_point);
+}
+
+// Cancels the monthly subscription at Mercado Pago. Pro stays until the end of the paid period.
+export async function cancelSubscription() {
+  const { user, profile } = await requireUser();
+  const admin = adminClient();
+  if (!profile.subscription_id || !admin) redirect("/app/plano");
+  const cancelled = await cancelMpSubscription(profile.subscription_id);
+  if (!cancelled) redirect("/app/plano?erro=1");
+  await admin.from("profiles").update({ subscription_status: cancelled.status }).eq("id", user.id);
+  revalidatePath("/app", "layout");
+  redirect("/app/plano?cancelada=1");
+}
 
 // --- Sign in (email code, no password) -------------------------------------------
 
@@ -61,7 +105,7 @@ export async function signOut() {
 
 // --- Onboarding --------------------------------------------------------------------
 
-export type FormState = { error?: SourceError | "freeLimit" | "generic"; ok?: boolean; savedAt?: number } | null;
+export type FormState = { error?: SourceError | "freeLimit" | "pro" | "generic"; ok?: boolean; savedAt?: number } | null;
 
 const isFreeLimit = (message: string | undefined) => Boolean(message?.includes("free_source_limit"));
 
@@ -123,10 +167,11 @@ export async function setSourceArchived(form: FormData) {
 
 // --- Projects --------------------------------------------------------------------------
 
-export type ProjectFormState = { error?: ProjectError | "generic"; ok?: boolean; savedAt?: number } | null;
+export type ProjectFormState = { error?: ProjectError | "pro" | "generic"; ok?: boolean; savedAt?: number } | null;
 
 export async function saveProject(_prev: ProjectFormState, form: FormData): Promise<ProjectFormState> {
-  const { supabase } = await requireUser();
+  const { supabase, profile } = await requireUser();
+  if (!isPro(profile)) return { error: "pro" };
   const parsed = parseProjectForm(form);
   if ("error" in parsed) return { error: parsed.error };
   const id = String(form.get("id") ?? "");
@@ -141,7 +186,8 @@ export async function saveProject(_prev: ProjectFormState, form: FormData): Prom
 }
 
 export async function setProjectArchived(form: FormData) {
-  const { supabase } = await requireUser();
+  const { supabase, profile } = await requireUser();
+  if (!isPro(profile)) redirect("/app/plano");
   const archive = form.get("archive") === "1";
   await supabase
     .from("projects")
@@ -366,10 +412,11 @@ export async function deletePayment(form: FormData) {
 
 // --- Invoices ------------------------------------------------------------------------
 
-export type InvoiceFormState = { error?: InvoiceError | "generic"; ok?: boolean; savedAt?: number } | null;
+export type InvoiceFormState = { error?: InvoiceError | "pro" | "generic"; ok?: boolean; savedAt?: number } | null;
 
 export async function saveInvoice(_prev: InvoiceFormState, form: FormData): Promise<InvoiceFormState> {
-  const { supabase } = await requireUser();
+  const { supabase, profile } = await requireUser();
+  if (!isPro(profile)) return { error: "pro" };
   const parsed = parseInvoiceForm(form);
   if ("error" in parsed) return { error: parsed.error };
   if (!(await projectFits(supabase, parsed.data.project_id, parsed.data.source_id))) return { error: "project" };
@@ -391,12 +438,13 @@ export async function deleteInvoice(form: FormData) {
   redirect("/app/faturas");
 }
 
-export type InvoiceHours = { hours: number; rate: number; amount: number } | { error: "noHours" | "noRate" | "period" };
+export type InvoiceHours = { hours: number; rate: number; amount: number } | { error: "noHours" | "noRate" | "period" | "pro" };
 
 // "Calculate from my hours": paid hours between two days × the hourly rate (the project's own rate, else
 // the client's). Without a project, hours in fixed-price projects are left out.
 export async function invoiceFromHours(input: { sourceId: string; projectId: string; from: string; to: string }): Promise<InvoiceHours> {
   const { supabase, profile, user } = await requireUser();
+  if (!isPro(profile)) return { error: "pro" };
   if (!isDay(input.from) || !isDay(input.to) || input.to < input.from) return { error: "period" };
   const tz = profile.timezone;
   const [{ data: source }, { data: projects }, { data: entries }] = await Promise.all([
@@ -620,7 +668,8 @@ const monthKey = (form: FormData) => {
 
 // The person's actual deductions for a month. Empty fields fall back to the estimate from Settings.
 export async function saveTaxMonth(_prev: FormState, form: FormData): Promise<FormState> {
-  const { supabase } = await requireUser();
+  const { supabase, profile } = await requireUser();
+  if (!isPro(profile)) return { error: "pro" };
   const month = monthKey(form);
   const optional = (name: string) => {
     const text = String(form.get(name) ?? "").trim();
@@ -653,6 +702,7 @@ export async function saveTaxMonth(_prev: FormState, form: FormData): Promise<Fo
 // Mark a month's DARF (or DAS) as paid today, or undo it.
 export async function setTaxPaid(form: FormData) {
   const { supabase, profile } = await requireUser();
+  if (!isPro(profile)) redirect("/app/plano");
   const month = monthKey(form);
   if (!month) return;
   await supabase.from("tax_months").upsert(
@@ -669,7 +719,8 @@ export async function setTaxPaid(form: FormData) {
 // --- Settings ------------------------------------------------------------------------
 
 export async function saveReserveSettings(_prev: FormState, form: FormData): Promise<FormState> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user, profile } = await requireUser();
+  if (!isPro(profile)) return { error: "pro" };
   const salaryText = String(form.get("salary_target") ?? "").trim();
   const salary = salaryText === "" ? null : parseNumber(salaryText);
   const pct = parseNumber(String(form.get("emergency_pct") ?? "10"));

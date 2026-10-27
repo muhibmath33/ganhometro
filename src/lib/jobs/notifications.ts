@@ -9,7 +9,7 @@ import { getEmailDictionary } from "@/i18n/emails";
 import { latePayments } from "@/lib/app/alerts";
 import { loadInvoices } from "@/lib/app/invoices";
 import { monthSummary } from "@/lib/app/money";
-import { PROFILE_FIELDS, type Profile, profileLocale } from "@/lib/app/session";
+import { isPro, PROFILE_FIELDS, type Profile, profileLocale } from "@/lib/app/session";
 import { dueReminders, loadTaxYear } from "@/lib/app/taxes";
 import { currencySymbol } from "@/lib/app/sources";
 import { addDays, dayKey, formatDuration, startOfDay } from "@/lib/app/time";
@@ -62,7 +62,8 @@ export async function runDailyNotifications(now = new Date()) {
     else counts[result]++;
   };
   for (const person of await people(admin)) {
-    if (!person.profile.email_reminders) continue;
+    // Reminders and alerts are Pro.
+    if (!person.profile.email_reminders || !isPro(person.profile)) continue;
     const locale = profileLocale(person.profile);
     const tz = person.profile.timezone;
     const today = dayKey(now, tz);
@@ -153,7 +154,8 @@ export async function runWeeklySummary(now = new Date()) {
     const perSource = new Map<string | null, number>();
     for (const x of entries ?? []) perSource.set(x.source_id, (perSource.get(x.source_id) ?? 0) + entryHours(x, nowMs));
 
-    const attention = [
+    // The weekly summary is for everyone; the alerts in it are Pro.
+    const attention = !isPro(person.profile) ? [] : [
       ...dueReminders(taxYear, today).map((m) =>
         fill(t.taxes.reminders[m.status === "overdue" ? "overdue" : "soon"][taxYear.mode], {
           month: monthName(m.key, locale),
