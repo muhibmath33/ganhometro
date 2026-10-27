@@ -8,7 +8,7 @@ import { getAppDictionary } from "@/i18n/app";
 import { fill } from "@/i18n/config";
 import { latePayments } from "@/lib/app/alerts";
 import { loadInvoices, loadPaymentSources, owedSummary } from "@/lib/app/invoices";
-import { paymentMoney } from "@/lib/app/money";
+import { loadFeeAudit, paymentMoney } from "@/lib/app/money";
 import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
 import { currencySymbol } from "@/lib/app/sources";
 import { dayKey, startOfDay } from "@/lib/app/time";
@@ -27,13 +27,16 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/app/pagame
   const now = requestNow();
   const today = dayKey(new Date(now), tz);
 
-  const [{ data: paymentRows }, { data: sourceRows }, { data: projectRows }, late, active, invoices] = await Promise.all([
+  const [y, m] = today.split("-").map(Number);
+  const yearAgo = new Date(Date.UTC(y, m - 12, 1)).toISOString().slice(0, 10);
+  const [{ data: paymentRows }, { data: sourceRows }, { data: projectRows }, late, active, invoices, fees] = await Promise.all([
     supabase.from("payments").select("*").order("received_on", { ascending: false }).order("created_at", { ascending: false }).limit(LIMIT),
     supabase.from("income_sources").select("id, name, currency, pay_model, rate, commission_pct, archived_at").order("created_at"),
     supabase.from("projects").select("id, source_id, name, pay_model, rate").order("created_at"),
     latePayments(supabase, user.id, tz, today),
     loadPaymentSources(supabase, user.id, today),
     loadInvoices(supabase, user.id, today),
+    loadFeeAudit(supabase, user.id, yearAgo, today),
   ]);
   const payments = paymentRows ?? [];
   const sources = sourceRows ?? [];
@@ -117,6 +120,25 @@ async function Payments({ searchParams }: { searchParams: PageProps<"/app/pagame
         <p role="status" className="m-0 rounded-[12px] bg-brand-tint px-4 py-3 text-[14px] font-semibold text-brand">
           {fill(t.payments.importResult, { added: params.importados, existing: String(params.existentes ?? 0) })}
         </p>
+      )}
+
+      {fees.total.payments > 0 && (
+        <Card>
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="m-0 text-[17px] font-bold">{t.fees.cardTitle}</h2>
+            <Link href="/app/pagamentos/custos" className="text-[14px] font-semibold">
+              {t.fees.cardSee} →
+            </Link>
+          </div>
+          <p className="m-0 text-[14px] text-ink-soft">
+            {fees.total.counted > 0
+              ? fill(t.fees.cardLine, {
+                  cost: fees.total.cost < 0 ? `${brl(-fees.total.cost)} ${t.fees.favour}` : brl(fees.total.cost),
+                  pct: pct(fees.total.pct ?? 0),
+                })
+              : t.fees.cardEmpty}
+          </p>
+        </Card>
       )}
 
       {active.length ? (

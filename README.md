@@ -78,7 +78,8 @@ server store exchange rates), add any long random `CRON_SECRET`, then restart `n
 | `bonus/` | Scripts that build and verify the carnê-leão spreadsheet, the PDF guide (`build_guide.py`), and the BCB rates (`ptax.json`) |
 | `src/app/admin`, `src/components/admin`, `src/lib/admin` | Private waitlist dashboard and CSV export |
 | `src/app/app/` | The app: `page.tsx` (Today, with the timer), `painel` (dashboard), `registro` (time log), `fontes` (platforms and clients), `ajustes` (settings), `entrar` (sign in), `boas-vindas` (onboarding), `auth/confirm` (email link) |
-| `src/app/app/pagamentos/` | Payments: list and quick add, edit, and `importar` (statement import) |
+| `src/app/app/pagamentos/` | Payments: list and quick add, edit, `importar` (statement import) and `custos` (exchange and fee audit by method) |
+| `src/app/app/registro/importar` | Import hours from Toggl or Clockify (CSV read in the browser; descriptions never leave it) |
 | `src/app/app/faturas/` | Invoices: what's owed, new invoice (amount from logged hours), each invoice with its payments |
 | `src/app/app/fontes/[id]` | A platform or client, and its projects (same pay, own hourly rate, or fixed price) |
 | `src/app/app/documentos/` | Documents: income statement, DECORE pack, timesheet, and `revisao` (payment review request with the math and a message to copy) |
@@ -87,8 +88,8 @@ server store exchange rates), add any long random `CRON_SECRET`, then restart `n
 | `src/app/app/impostos/` | Taxes: the year, and each month (`2026-10`) with conversions, deductions and "paid" |
 | `src/app/app/actions.ts` | Every form in the app (server actions) |
 | `src/components/app/`, `src/i18n/app.ts` | App screens' building blocks, and all app text (PT/EN) |
-| `src/lib/app/` | Signed-in user and profile (`session.ts`), form rules (`sources.ts`, `entries.ts`, `payments.ts`), time zones (`time.ts`), statement reader (`statementImport.ts`), payments in reais for pages (`money.ts`), the Taxes screens' data and reminders (`taxes.ts`), late payments (`alerts.ts`), projects (`projects.ts`), invoices and money owed (`invoices.ts`) |
-| `src/lib/money/` | Real rate with projects and retainers (`realRate.ts`), invoice states and numbering (`invoices.ts`), income report, timesheet rows and CSV (`reports.ts`), money received, "possível diferença" and take-home (`received.ts`), reserves (`reserves.ts`), paydays and late payments (`paydays.ts`), conversion rules (`convert.ts`), taxes (`tax.ts`), Banco Central rates (`ptax.ts`, `rates.ts`); all with tests except the network parts |
+| `src/lib/app/` | Signed-in user and profile (`session.ts`), form rules (`sources.ts`, `entries.ts`, `payments.ts`), time zones (`time.ts`), statement reader (`statementImport.ts`), Toggl/Clockify reader (`timeImport.ts`), payments in reais for pages (`money.ts`), the Taxes screens' data and reminders (`taxes.ts`), late payments (`alerts.ts`), projects (`projects.ts`), invoices and money owed (`invoices.ts`) |
+| `src/lib/money/` | Real rate with projects and retainers (`realRate.ts`), invoice states and numbering (`invoices.ts`), income report, timesheet rows and CSV (`reports.ts`), exchange and fee audit (`fees.ts`), money received, "possível diferença" and take-home (`received.ts`), reserves (`reserves.ts`), paydays and late payments (`paydays.ts`), conversion rules (`convert.ts`), taxes (`tax.ts`), Banco Central rates (`ptax.ts`, `rates.ts`); all with tests except the network parts |
 | `src/app/api/cron/`, `vercel.json` | Daily job (17:30 UTC: rates, then reminder, late-payment and overdue-invoice emails) and weekly job (Mondays 11:00 UTC: summary) |
 | `src/lib/jobs/notifications.ts` | What the jobs send and to whom (each email once, respecting the person's email settings) |
 | `src/lib/email/`, `src/i18n/emails.ts` | Sending (Resend, or the local inbox), the email templates and their text (PT/EN) |

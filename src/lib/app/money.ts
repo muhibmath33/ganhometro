@@ -2,6 +2,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { type RateBook, toMarketBrl, toTaxBrl } from "@/lib/money/convert";
+import { feeAudit } from "@/lib/money/fees";
 import { loadRates } from "@/lib/money/rates";
 import { monthTakeHome, type PaymentMoney, type TakeHome, type TaxProfile } from "@/lib/money/received";
 import type { ReserveSettings } from "@/lib/money/reserves";
@@ -91,4 +92,22 @@ export async function takeHomeHistory(
     const money = mine.map((p) => paymentMoney(p, book, Number(p.income_sources?.commission_pct ?? 0)));
     return { key, takeHome: monthTakeHome(money, profileForTax), count: mine.length };
   });
+}
+
+// Exchange and fee audit for payments received between two days (see lib/money/fees.ts).
+export async function loadFeeAudit(supabase: SupabaseClient<Database>, userId: string, fromDay: string, toDay: string) {
+  const { data } = await supabase
+    .from("payments")
+    .select("method, amount, currency, received_on, amount_brl_received, income_sources(commission_pct)")
+    .eq("user_id", userId)
+    .gte("received_on", fromDay)
+    .lte("received_on", toDay);
+  const payments = data ?? [];
+  const book = await loadRates(supabase, payments.map((p) => p.currency), fromDay, toDay);
+  return feeAudit(
+    payments.map((p) => {
+      const money = paymentMoney(p, book, Number(p.income_sources?.commission_pct ?? 0));
+      return { method: p.method, marketBrl: money.marketBrl, arrivedBrl: money.arrivedBrl, commissionPct: money.commissionPct };
+    }),
+  );
 }

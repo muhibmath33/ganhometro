@@ -188,14 +188,14 @@ isOneToOne: false
                   ]
                 },"time_entries": {
                   Row: {
-                    "category_id": string | null,"created_at": string,"ended_at": string | null,"id": string,"kind": Database["public"]['Enums']["entry_kind"],"origin": string,"project_id": string | null,"source_id": string | null,"started_at": string,"units": number | null,"user_id": string
+                    "category_id": string | null,"created_at": string,"ended_at": string | null,"id": string,"import_ref": string | null,"kind": Database["public"]['Enums']["entry_kind"],"origin": string,"project_id": string | null,"source_id": string | null,"started_at": string,"units": number | null,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "category_id"?: string | null,"created_at"?: string,"ended_at"?: string | null,"id"?: string,"kind": Database["public"]['Enums']["entry_kind"],"origin"?: string,"project_id"?: string | null,"source_id"?: string | null,"started_at": string,"units"?: number | null,"user_id"?: string
+                    "category_id"?: string | null,"created_at"?: string,"ended_at"?: string | null,"id"?: string,"import_ref"?: string | null,"kind": Database["public"]['Enums']["entry_kind"],"origin"?: string,"project_id"?: string | null,"source_id"?: string | null,"started_at": string,"units"?: number | null,"user_id"?: string
                   }
                   Update: {
-                    "category_id"?: string | null,"created_at"?: string,"ended_at"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["entry_kind"],"origin"?: string,"project_id"?: string | null,"source_id"?: string | null,"started_at"?: string,"units"?: number | null,"user_id"?: string
+                    "category_id"?: string | null,"created_at"?: string,"ended_at"?: string | null,"id"?: string,"import_ref"?: string | null,"kind"?: Database["public"]['Enums']["entry_kind"],"origin"?: string,"project_id"?: string | null,"source_id"?: string | null,"started_at"?: string,"units"?: number | null,"user_id"?: string
                   }
                   Relationships: [
                     {

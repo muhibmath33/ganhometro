@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { startTimer, stopTimer, switchTimer, type TimerState } from "@/app/app/actions";
 import type { AppDictionary } from "@/i18n/app";
 import { type Category, type EntryKind, NO_CLIENT } from "@/lib/app/entries";
 import { formatClock, formatDuration } from "@/lib/app/time";
 import { fieldInput, fieldLabel } from "./SourceFields";
 import { Chip, KindBadge, legendClass, SplitBar, SplitLegend } from "./ui";
+import { useNow } from "./useNow";
 
 export type TimerSource = { id: string; name: string; perTask: boolean; projects: { id: string; name: string }[] };
 export type RunningEntry = {
@@ -22,19 +23,6 @@ export type RunningEntry = {
 };
 
 const LONG_MS = 12 * 3_600_000;
-
-// The current time, ticking. It starts from the server's clock, so the first render matches the
-// HTML, and keeps the server's offset, so a phone with a wrong clock still shows the right time.
-function useNow(serverNow: number, intervalMs: number) {
-  const [now, setNow] = useState(serverNow);
-  useEffect(() => {
-    const offset = serverNow - Date.now();
-    const id = setInterval(() => setNow(Date.now() + offset), intervalMs);
-    return () => clearInterval(id);
-  }, [serverNow, intervalMs]);
-  // After a server action re-renders the page, serverNow is newer than the last tick.
-  return Math.max(now, serverNow);
-}
 
 const bigButton =
   "flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-[12px] border-0 px-6 font-sans text-[17px] font-bold disabled:cursor-wait disabled:opacity-70";

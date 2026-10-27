@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { EntryForm } from "@/components/app/EntryForm";
 import { Card, KindBadge, PageSkeleton } from "@/components/app/ui";
 import { categoryName, getAppDictionary } from "@/i18n/app";
+import { fill } from "@/i18n/config";
 import { type Entry, entryTimes } from "@/lib/app/entries";
 import { loadTimerSources } from "@/lib/app/projects";
 import { profileLocale, requestNow, requireUser } from "@/lib/app/session";
@@ -56,7 +57,16 @@ async function TimeLog({ searchParams }: { searchParams: PageProps<"/app/registr
       <div className="flex flex-col gap-1">
         <h1 className="m-0 text-[28px] font-extrabold tracking-[-0.02em]">{t.log.title}</h1>
         <p className="m-0 max-w-[640px] text-[15px] text-ink-soft">{t.log.lead}</p>
+        <Link href="/app/registro/importar" className="mt-1 self-start rounded-[9px] border border-line bg-white px-3 py-2 text-[14px] font-semibold no-underline">
+          {t.timeImport.link}
+        </Link>
       </div>
+
+      {typeof params.importadas === "string" && (
+        <p role="status" className="m-0 rounded-[12px] bg-brand-tint px-4 py-3 text-[14px] font-semibold text-brand">
+          {fill(t.timeImport.result, { added: params.importadas, existing: String(params.existentes ?? 0), overlap: String(params.sobrepostas ?? 0) })}
+        </p>
+      )}
 
       {!before && (
         <Card>

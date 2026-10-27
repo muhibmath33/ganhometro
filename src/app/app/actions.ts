@@ -8,7 +8,7 @@ import { METHODS, type Method, type PaymentError, parsePaymentForm } from "@/lib
 import { type InvoiceError, parseInvoiceForm } from "@/lib/app/invoices";
 import { parseProjectForm, type ProjectError } from "@/lib/app/projects";
 import { CURRENCIES, parseSourceForm, type SourceError, WORK_TYPES } from "@/lib/app/sources";
-import { addDays, dayKey, isDay } from "@/lib/app/time";
+import { addDays, dayKey, isDay, zonedToUtc } from "@/lib/app/time";
 import { parseNumber } from "@/lib/calc";
 import { amountFromHours } from "@/lib/money/invoices";
 import { defaultPeriods } from "@/lib/money/received";
@@ -438,6 +438,118 @@ export async function invoiceFromHours(input: { sourceId: string; projectId: str
   }
   if (hours <= 0) return { error: "noHours" };
   return { hours, rate: amount / hours, amount: Math.round(amount * 100) / 100 };
+}
+
+// --- Time import (Toggl, Clockify) -----------------------------------------------------------
+
+export type TimeImportState = { error?: "generic" } | null;
+
+type ImportRow = { sd: string; st: string; ed: string; et: string; source: string; project: string | null; paid: boolean; ref: string };
+const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/;
+const IMPORT_REF = /^(toggl|clockify|generic):[a-z0-9]{1,16}$/;
+
+// Rows from the import preview: local start and end, where each goes (a source id or NO_CLIENT), paid or not,
+// the project name to link, and a reference. Entries already imported, or overlapping hours in the log (or
+// each other), are left out; the rest are saved.
+export async function importTimeEntries(_prev: TimeImportState, form: FormData): Promise<TimeImportState> {
+  const { supabase, profile, user } = await requireUser();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(String(form.get("rows") ?? "[]"));
+  } catch {
+    return { error: "generic" };
+  }
+  const [{ data: sourceRows }, { data: projectRows }] = await Promise.all([
+    supabase.from("income_sources").select("id").eq("user_id", user.id),
+    supabase.from("projects").select("id, source_id, name").eq("user_id", user.id),
+  ]);
+  const sourceIds = new Set((sourceRows ?? []).map((r) => r.id));
+  const tz = profile.timezone;
+  const latest = Date.now() + 60_000;
+  const candidates = (Array.isArray(parsed) ? parsed : [])
+    .slice(0, 2000)
+    .filter(
+      (r): r is ImportRow =>
+        r &&
+        isDay(r.sd) &&
+        isDay(r.ed) &&
+        CLOCK.test(r.st) &&
+        CLOCK.test(r.et) &&
+        typeof r.ref === "string" &&
+        IMPORT_REF.test(r.ref) &&
+        (r.source === NO_CLIENT || sourceIds.has(r.source)) &&
+        (r.project === null || (typeof r.project === "string" && r.project.length <= 200)),
+    )
+    .map((r) => {
+      const start = zonedToUtc(r.sd, r.st, tz);
+      const end = zonedToUtc(r.ed, r.et, tz);
+      const sourceId = r.source === NO_CLIENT ? null : r.source;
+      const project =
+        sourceId && r.project
+          ? (projectRows ?? []).find((p) => p.source_id === sourceId && p.name.trim().toLowerCase() === r.project!.trim().toLowerCase())
+          : undefined;
+      return { start, end, sourceId, projectId: project?.id ?? null, paid: Boolean(sourceId) && r.paid === true, ref: r.ref };
+    })
+    .filter((c): c is typeof c & { start: Date; end: Date } =>
+      Boolean(c.start && c.end && c.end > c.start && c.end.getTime() - c.start.getTime() <= 86_400_000 && c.end.getTime() <= latest),
+    )
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
+  if (!candidates.length) return { error: "generic" };
+
+  // Already imported (same reference), checked in chunks to keep the request short.
+  const known = new Set<string>();
+  for (let i = 0; i < candidates.length; i += 200) {
+    const { data } = await supabase
+      .from("time_entries")
+      .select("import_ref")
+      .eq("user_id", user.id)
+      .in("import_ref", candidates.slice(i, i + 200).map((c) => c.ref));
+    for (const row of data ?? []) if (row.import_ref) known.add(row.import_ref);
+  }
+  const fresh = candidates.filter((c) => !known.has(c.ref));
+
+  // Overlaps: the log allows no two entries at the same time.
+  const from = fresh.length ? fresh[0].start.toISOString() : "";
+  const to = fresh.length ? new Date(Math.max(...fresh.map((c) => c.end.getTime()))).toISOString() : "";
+  const { data: logged } = fresh.length
+    ? await supabase
+        .from("time_entries")
+        .select("started_at, ended_at")
+        .eq("user_id", user.id)
+        .lt("started_at", to)
+        .or(`ended_at.gt.${from},ended_at.is.null`)
+    : { data: [] };
+  const taken = (logged ?? []).map((e) => [Date.parse(e.started_at), e.ended_at ? Date.parse(e.ended_at) : Date.now()] as const);
+  const accepted: typeof fresh = [];
+  for (const c of fresh) {
+    const [s0, e0] = [c.start.getTime(), c.end.getTime()];
+    const clash = (s1: number, e1: number) => s0 < e1 && s1 < e0;
+    if (taken.some(([s1, e1]) => clash(s1, e1)) || accepted.some((a) => clash(a.start.getTime(), a.end.getTime()))) continue;
+    accepted.push(c);
+  }
+
+  let added = 0;
+  for (let i = 0; i < accepted.length; i += 500) {
+    const { data, error } = await supabase
+      .from("time_entries")
+      .upsert(
+        accepted.slice(i, i + 500).map((c) => ({
+          source_id: c.sourceId,
+          project_id: c.projectId,
+          kind: c.paid ? ("paid" as const) : ("unpaid" as const),
+          started_at: c.start.toISOString(),
+          ended_at: c.end.toISOString(),
+          origin: "import",
+          import_ref: c.ref,
+        })),
+        { onConflict: "user_id,import_ref", ignoreDuplicates: true },
+      )
+      .select("id");
+    if (error) return { error: "generic" };
+    added += data?.length ?? 0;
+  }
+  revalidatePath("/app", "layout");
+  redirect(`/app/registro?importadas=${added}&existentes=${known.size}&sobrepostas=${fresh.length - accepted.length}`);
 }
 
 // Rows picked in the statement preview: [{ day, amount, currency, source_id, ref }]. Rows already imported
